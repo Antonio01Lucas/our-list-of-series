@@ -3,7 +3,11 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
-// Função ajudante para a URL
+// Criamos um tipo para o estado do seu formulário
+type LoginState = {
+  error: string;
+};
+
 const getBaseUrl = () => {
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
@@ -11,8 +15,8 @@ const getBaseUrl = () => {
   return "http://localhost:3000";
 };
 
-// 1. Função de Login (Email e Senha) - É esta que estava faltando!
-export async function login(formData: FormData) {
+// 1. Aplicamos o tipo LoginState aqui
+export async function login(prevState: LoginState, formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const supabase = await createClient();
@@ -23,19 +27,17 @@ export async function login(formData: FormData) {
   });
 
   if (error) {
-    throw new Error("Falha no login: " + error.message);
+    // Agora o retorno está alinhado com o tipo LoginState
+    return { error: "Falha no login: " + error.message };
   }
 
   redirect("/");
 }
 
-// 2. Função de Signup
-export async function signup(_formData: FormData) {
-  // Ajuste aqui se você estiver usando o signup com e-mail/senha
+export async function signup() {
   return { error: "Conta criada! Verifique seu email." };
 }
 
-// 3. Login com Google
 export async function signInWithGoogle() {
   const supabase = await createClient();
 
@@ -56,7 +58,6 @@ export async function signInWithGoogle() {
   }
 }
 
-// 4. Logout
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
