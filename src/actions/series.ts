@@ -66,7 +66,7 @@ export async function updateSeriesRating(id: string, rating: number) {
 
   const { error } = await supabase
     .from("series")
-    .update({ rating: rating })
+    .update({ rating })
     .eq("id", id);
 
   if (error) throw new Error("Erro ao salvar nota");

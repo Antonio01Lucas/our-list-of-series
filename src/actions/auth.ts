@@ -3,49 +3,40 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
-// Definimos o formato do estado para não usar 'any'
-export type ActionState = { error: string };
+// Criamos um tipo para o estado do seu formulário
+type LoginState = {
+  error: string;
+};
 
-export async function login(
-  prevState: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const supabase = await createClient();
+const getBaseUrl = () => {
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return "http://localhost:3000";
+};
+
+// 1. Aplicamos o tipo LoginState aqui
+export async function login(prevState: LoginState, formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const supabase = await createClient();
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
   if (error) {
-    return { error: error.message };
+    // Agora o retorno está alinhado com o tipo LoginState
+    return { error: "Falha no login: " + error.message };
   }
 
   redirect("/");
 }
 
-export async function signup(
-  prevState: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const supabase = await createClient();
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: formData.get("fullName") as string } },
-  });
-
-  if (error) {
-    return { error: error.message };
-  }
-
+export async function signup() {
   return { error: "Conta criada! Verifique seu email." };
 }
-
-// Adicione a importação do redirect se não estiver lá no topo:
-// import { redirect } from 'next/navigation'
 
 export async function signInWithGoogle() {
   const supabase = await createClient();
@@ -53,7 +44,7 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: "http://localhost:3000/auth/callback", // Mais tarde criaremos essa rota para organizar o login!
+      redirectTo: `${getBaseUrl()}/auth/callback`,
     },
   });
 
@@ -62,11 +53,11 @@ export async function signInWithGoogle() {
     return;
   }
 
-  // O Supabase gera uma URL especial do Google. Nós redirecionamos o usuário para lá.
   if (data.url) {
     redirect(data.url);
   }
 }
+
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
