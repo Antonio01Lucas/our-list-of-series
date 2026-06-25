@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
-import { login, signup, signInWithGoogle } from './actions'
+import { login, signup, signInWithGoogle } from '@/actions/auth'
 import { Logo } from '@/components/logo'
 
 export default function LoginPage() {

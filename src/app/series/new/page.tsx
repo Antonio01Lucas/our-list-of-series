@@ -1,66 +1,85 @@
-'use client'
+import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
+import { Logo } from "@/components/logo";
+import { updateSeriesStatus } from "@/actions/series";
 
-import { useActionState } from 'react' 
-import { useRouter } from 'next/navigation'
-import { addSeries } from './actions' // Importando a ação que criamos
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-export default function NewSeriesPage() {
-  const router = useRouter()
-  
-  // Conectando o estado da ação
-  const [state, formAction] = useActionState(addSeries, { error: '' })
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: series } = await supabase
+    .from("series")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-8">
-      <div className="max-w-xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-blue-500">Nova Série</h1>
-        
-        {/* Passamos o formAction do hook para o form */}
-        <form action={formAction} className="bg-zinc-900 border border-zinc-800 p-8 rounded-xl flex flex-col gap-4">
-          
-          {state?.error && (
-            <p className="text-red-400 bg-red-950/30 p-3 rounded border border-red-900 text-sm">
-              {state.error}
-            </p>
-          )}
+      <div className="max-w-4xl mx-auto">
+        {/* Cabeçalho */}
+        <header className="flex justify-between items-center mb-12 border-b border-zinc-800 pb-6">
+          <Logo />
+          <div className="flex items-center gap-6">
+            <span className="text-sm text-zinc-400 font-medium">
+              {user.email}
+            </span>
+          </div>
+        </header>
 
-          <div>
-            <label className="block text-sm font-medium mb-2 text-zinc-400">Nome da Série</label>
-            <input 
-              name="title" 
-              type="text" 
-              required
-              placeholder="Ex: Breaking Bad"
-              className="w-full bg-zinc-800 border border-zinc-700 p-3 rounded text-white focus:outline-none focus:border-blue-500" 
-            />
+        {/* Conteúdo Principal */}
+        <main>
+          <div className="flex justify-between items-end mb-8">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">Suas Séries</h2>
+              <p className="text-zinc-400">
+                Gerencie o que você está assistindo agora.
+              </p>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2 text-zinc-400">Status</label>
-            <select name="status" className="w-full bg-zinc-800 border border-zinc-700 p-3 rounded text-white focus:outline-none focus:border-blue-500">
-              <option value="plan_to_watch">Planejo Assistir</option>
-              <option value="watching">Assistindo</option>
-              <option value="watched">Concluída</option>
-            </select>
-          </div>
+          {/* Grid de Séries */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {series?.map((serie) => {
+              // Lógica de atualização interna isolada
+              const handleUpdate = async () => {
+                "use server";
+                const novoStatus =
+                  serie.status === "assistindo" ? "finalizado" : "assistindo";
+                await updateSeriesStatus(serie.id, novoStatus);
+              };
 
-          <div className="flex gap-4 mt-4">
-            <button 
-              type="button" 
-              onClick={() => router.back()}
-              className="flex-1 bg-zinc-800 hover:bg-zinc-700 p-3 rounded transition-colors"
-            >
-              Cancelar
-            </button>
-            <button 
-              type="submit" 
-              className="flex-1 bg-blue-600 hover:bg-blue-700 p-3 rounded font-medium transition-colors"
-            >
-              Adicionar
-            </button>
+              return (
+                <div
+                  key={serie.id}
+                  className="group bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl hover:border-blue-500/50 transition-all hover:bg-zinc-900"
+                >
+                  <h3 className="font-bold text-lg mb-1 group-hover:text-blue-400 transition-colors">
+                    {serie.title}
+                  </h3>
+                  <p className="text-xs text-zinc-400 font-medium uppercase tracking-wider mb-4">
+                    {serie.status.replace("_", " ")}
+                  </p>
+
+                  <form action={handleUpdate}>
+                    <button
+                      type="submit"
+                      className="text-xs bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-white font-medium transition-colors w-full"
+                    >
+                      {serie.status === "assistindo" ? "Finalizar" : "Assistir"}
+                    </button>
+                  </form>
+                </div>
+              );
+            })}
           </div>
-        </form>
+        </main>
       </div>
     </div>
-  )
+  );
 }
