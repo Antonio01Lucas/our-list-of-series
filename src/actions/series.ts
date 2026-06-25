@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+
 export async function updateSeriesStatus(id: string, newStatus: string) {
   const supabase = await createClient();
 
@@ -66,7 +67,7 @@ export async function updateSeriesRating(id: string, rating: number) {
 
   const { error } = await supabase
     .from("series")
-    .update({ rating: rating })
+    .update({ rating:})
     .eq("id", id);
 
   if (error) throw new Error("Erro ao salvar nota");
