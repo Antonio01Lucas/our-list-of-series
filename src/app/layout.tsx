@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google"; // Carregando a nova fonte
-import "./globals.css";
-import { Providers } from "@/components/providers";
+import { Inter } from "next/font/google";
+import { Header } from "@/components/Header";
+import "@/app/globals.css";
 
-// Configurando a fonte
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "SyncWatch",
-  description: "Sua plataforma de filmes e séries",
+  description: "Monitore suas maratonas de cinema",
 };
 
 export default function RootLayout({
@@ -22,9 +18,14 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="dark">
       <body
-        className={`${plusJakartaSans.className} bg-zinc-950 text-white antialiased`}
+        className={`${inter.className} bg-zinc-950 text-white antialiased min-h-screen flex flex-col`}
       >
-        <Providers>{children}</Providers>
+        {/* Renderização do Header no topo */}
+        <Header />
+
+        {/* 🌟 VITORIA DE LAYOUT: O contêiner principal ganha flex-1 e pt-16 apenas se necessário, 
+            mas para simplificar e não quebrar o login, as páginas ganham o espaçamento perfeitamente */}
+        <main className="flex-1 flex flex-col">{children}</main>
       </body>
     </html>
   );
