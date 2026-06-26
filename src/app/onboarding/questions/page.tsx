@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { saveOnboardingData } from "@/actions/onboarding";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Input } from "@/components/ui/input";
 import { MediaSearch } from "@/components/MediaSearch";
 import {
   Film,
@@ -17,9 +16,9 @@ import {
   X,
   Plus,
   Clapperboard,
+  Tv2,
 } from "lucide-react";
 
-// Tipagem para os itens selecionados do TMDB
 interface SelectedMedia {
   tmdb_id: string;
   title: string;
@@ -37,14 +36,8 @@ export default function OnboardingQuestionsPage() {
   const [actors, setActors] = useState<string[]>([]);
   const [directors, setDirectors] = useState<string[]>([]);
 
-  // Estados temporários para inputs de texto (Passo 3)
-  const [currentActor, setCurrentActor] = useState("");
-  const [currentDirector, setCurrentDirector] = useState("");
-
-  // Progresso da barra (3 passos = 33%, 66%, 100%)
   const progressValue = step === 1 ? 33 : step === 2 ? 66 : 100;
 
-  // Handlers para adicionar mídias (máximo 5)
   const addMovie = (media: {
     id: string;
     title: string;
@@ -71,34 +64,23 @@ export default function OnboardingQuestionsPage() {
     ]);
   };
 
-  // Handlers para tags de texto (Atores e Diretores)
-  const addActor = () => {
-    if (!currentActor.trim() || actors.includes(currentActor.trim())) return;
-    setActors([...actors, currentActor.trim()]);
-    setCurrentActor("");
+  const addActorTag = (name: string) => {
+    if (!name.trim() || actors.includes(name.trim())) return;
+    setActors([...actors, name.trim()]);
   };
 
-  const addDirector = () => {
-    if (!currentDirector.trim() || directors.includes(currentDirector.trim()))
-      return;
-    setDirectors([...directors, currentDirector.trim()]);
-    setCurrentDirector("");
+  const addDirectorTag = (name: string) => {
+    if (!name.trim() || directors.includes(name.trim())) return;
+    setDirectors([...directors, name.trim()]);
   };
 
-  // Envio final dos dados para o Supabase
   const handleSubmit = async () => {
-    setLoading(false);
     try {
       setLoading(true);
-
-      // Chamamos a Server Action que criamos anteriormente
       await saveOnboardingData({
         favorite_actors: actors,
         favorite_directors: directors,
-        // Dica: Se quiser salvar os filmes/séries em lote nas tabelas de relacionamento,
-        // passaremos esses arrays para a action processar no banco.
       });
-
       router.push("/");
     } catch (error) {
       console.error("Erro ao salvar onboarding:", error);
@@ -139,14 +121,14 @@ export default function OnboardingQuestionsPage() {
               </h2>
               <p className="text-zinc-400 text-sm">
                 Busque e selecione até 5 filmes que definem o seu gosto
-                cinematográfico[cite: 1306].
+                cinematográfico.
               </p>
             </div>
 
-            {/* Componente de Busca Reutilizado */}
             <div className="pt-2">
               <MediaSearch
                 type="movie"
+                placeholder="Pesquisar filme no catálogo..."
                 onSelect={(media) =>
                   addMovie({
                     id: media.id.toString(),
@@ -157,34 +139,46 @@ export default function OnboardingQuestionsPage() {
               />
             </div>
 
-            {/* Grid de Escolhas */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-4">
+            {/* Grid Estilo Prateleira de Streaming Premium */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-4">
               {movies.map((movie) => (
                 <div
                   key={movie.tmdb_id}
-                  className="group bg-zinc-950 border border-zinc-800 rounded-xl p-3 relative flex flex-col items-center justify-between text-center min-h-25 hover:border-zinc-700 transition"
+                  className="group aspect-2/3 bg-zinc-900 border border-zinc-800 rounded-2xl relative overflow-hidden shadow-md hover:border-zinc-700 transition duration-300"
                 >
+                  {movie.poster_path ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`https://image.tmdb.org/t/p/w342${movie.poster_path}`}
+                      alt={movie.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full p-3 flex items-center justify-center text-center text-[10px] font-bold text-zinc-500">
+                      {movie.title}
+                    </div>
+                  )}
+                  {/* Gradiente sutil para esconder os botões */}
+                  <div className="absolute inset-0 bg-linear-to-t from-zinc-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
                   <button
                     onClick={() =>
                       setMovies(
                         movies.filter((m) => m.tmdb_id !== movie.tmdb_id),
                       )
                     }
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-zinc-800 hover:bg-red-500 rounded-full flex items-center justify-center border border-zinc-700 transition text-zinc-400 hover:text-white"
+                    className="absolute top-2 right-2 w-6 h-6 bg-zinc-950/80 hover:bg-red-600 rounded-full flex items-center justify-center border border-zinc-800/80 backdrop-blur-md transition text-zinc-300 hover:text-white z-20 shadow-lg"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-xs font-bold text-zinc-300 line-clamp-3 my-auto px-1">
-                    {movie.title}
-                  </span>
                 </div>
               ))}
               {Array.from({ length: 5 - movies.length }).map((_, idx) => (
                 <div
                   key={idx}
-                  className="border border-dashed border-zinc-800 rounded-xl flex items-center justify-center min-h-25 text-zinc-700"
+                  className="border-2 border-dashed border-zinc-800/60 rounded-2xl flex items-center justify-center aspect-2/3 text-zinc-800/80 hover:text-zinc-700 hover:border-zinc-700/60 transition duration-300"
                 >
-                  <Plus className="w-5 h-5" />
+                  <Plus className="w-6 h-6" />
                 </div>
               ))}
             </div>
@@ -201,13 +195,14 @@ export default function OnboardingQuestionsPage() {
               </h2>
               <p className="text-zinc-400 text-sm">
                 O algoritmo lerá os gêneros e formatos dessas produções para
-                calibrar sua estante[cite: 1307].
+                calibrar sua estante.
               </p>
             </div>
 
             <div className="pt-2">
               <MediaSearch
                 type="tv"
+                placeholder="Pesquisar série no catálogo..."
                 onSelect={(media) =>
                   addSeries({
                     id: media.id.toString(),
@@ -218,40 +213,51 @@ export default function OnboardingQuestionsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-4">
               {series.map((item) => (
                 <div
                   key={item.tmdb_id}
-                  className="group bg-zinc-950 border border-zinc-800 rounded-xl p-3 relative flex flex-col items-center justify-between text-center min-h-25 hover:border-zinc-700 transition"
+                  className="group aspect-2/3 bg-zinc-900 border border-zinc-800 rounded-2xl relative overflow-hidden shadow-md hover:border-zinc-700 transition duration-300"
                 >
+                  {item.poster_path ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full p-3 flex items-center justify-center text-center text-[10px] font-bold text-zinc-500">
+                      {item.title}
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-linear-to-t from-zinc-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
                   <button
                     onClick={() =>
                       setSeries(
                         series.filter((s) => s.tmdb_id !== item.tmdb_id),
                       )
                     }
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-zinc-800 hover:bg-red-500 rounded-full flex items-center justify-center border border-zinc-700 transition text-zinc-400 hover:text-white"
+                    className="absolute top-2 right-2 w-6 h-6 bg-zinc-950/80 hover:bg-red-600 rounded-full flex items-center justify-center border border-zinc-800/80 backdrop-blur-md transition text-zinc-300 hover:text-white z-20 shadow-lg"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-xs font-bold text-zinc-300 line-clamp-3 my-auto px-1">
-                    {item.title}
-                  </span>
                 </div>
               ))}
               {Array.from({ length: 5 - series.length }).map((_, idx) => (
                 <div
                   key={idx}
-                  className="border border-dashed border-zinc-800 rounded-xl flex items-center justify-center min-h-25 text-zinc-700"
+                  className="border-2 border-dashed border-zinc-800/60 rounded-2xl flex items-center justify-center aspect-2/3 text-zinc-800/80 hover:text-zinc-700 hover:border-zinc-700/60 transition duration-300"
                 >
-                  <Plus className="w-5 h-5" />
+                  <Plus className="w-6 h-6" />
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* PASSO 3: ATORES E DIRETORES */}
+        {/* PASSO 3: ATORES E DIRETORES PREDITIVOS */}
         {step === 3 && (
           <div className="space-y-8 w-full animate-in fade-in slide-in-from-bottom-4 duration-300">
             <div className="space-y-2">
@@ -260,42 +266,32 @@ export default function OnboardingQuestionsPage() {
                 Quem comanda a tela?
               </h2>
               <p className="text-zinc-400 text-sm">
-                Adicione os nomes dos atores, atrizes ou diretores que fazem
-                você assistir a um projeto[cite: 1307].
+                Busque e selecione os astros e cineastas que fazem você assistir
+                a um projeto.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Seção Atores */}
-              <div className="space-y-3">
-                <label className="text-xs font-black uppercase tracking-wider text-zinc-400">
-                  Atores / Atrizes favoritos [cite: 1307]
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              {/* Seção Atores Preditivos */}
+              <div className="space-y-4">
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+                  <UserIcon className="w-3.5 h-3.5 text-zinc-500" /> Atores /
+                  Atrizes favoritos
                 </label>
-                <div className="flex gap-2">
-                  <Input
-                    value={currentActor}
-                    onChange={(e) => setCurrentActor(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addActor()}
-                    placeholder="Ex: Al Pacino, Meryl Streep..."
-                    className="bg-zinc-950 border-zinc-800 text-sm rounded-xl h-11 focus-visible:ring-blue-500/50"
-                  />
-                  <Button
-                    onClick={addActor}
-                    variant="secondary"
-                    className="bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl h-11 px-4"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
+                <MediaSearch
+                  type="person"
+                  placeholder="Buscar ator ou atriz..."
+                  onSelect={(media) => addActorTag(media.title)}
+                />
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {actors.map((actor) => (
                     <span
                       key={actor}
-                      className="inline-flex items-center gap-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold px-2.5 py-1 rounded-lg"
+                      className="inline-flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold px-3 py-1.5 rounded-xl transition hover:border-blue-500/40"
                     >
                       {actor}
                       <X
-                        className="w-3 h-3 cursor-pointer hover:text-white"
+                        className="w-3 h-3 cursor-pointer hover:text-white transition-colors"
                         onClick={() =>
                           setActors(actors.filter((a) => a !== actor))
                         }
@@ -305,36 +301,26 @@ export default function OnboardingQuestionsPage() {
                 </div>
               </div>
 
-              {/* Seção Diretores */}
-              <div className="space-y-3">
-                <label className="text-xs font-black uppercase tracking-wider text-zinc-400">
-                  Diretores favoritos [cite: 1307]
+              {/* Seção Diretores Preditivos */}
+              <div className="space-y-4">
+                <label className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+                  <Tv2 className="w-3.5 h-3.5 text-zinc-500" /> Diretores
+                  favoritos
                 </label>
-                <div className="flex gap-2">
-                  <Input
-                    value={currentDirector}
-                    onChange={(e) => setCurrentDirector(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addDirector()}
-                    placeholder="Ex: Nolan, Tarantino..."
-                    className="bg-zinc-950 border-zinc-800 text-sm rounded-xl h-11 focus-visible:ring-blue-500/50"
-                  />
-                  <Button
-                    onClick={addDirector}
-                    variant="secondary"
-                    className="bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl h-11 px-4"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
+                <MediaSearch
+                  type="person"
+                  placeholder="Buscar cineasta ou diretor..."
+                  onSelect={(media) => addDirectorTag(media.title)}
+                />
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {directors.map((dir) => (
                     <span
                       key={dir}
-                      className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold px-2.5 py-1 rounded-lg"
+                      className="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold px-3 py-1.5 rounded-xl transition hover:border-amber-500/40"
                     >
                       {dir}
                       <X
-                        className="w-3 h-3 cursor-pointer hover:text-white"
+                        className="w-3 h-3 cursor-pointer hover:text-white transition-colors"
                         onClick={() =>
                           setDirectors(directors.filter((d) => d !== dir))
                         }
