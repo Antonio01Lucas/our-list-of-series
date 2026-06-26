@@ -17,11 +17,18 @@ export async function addSeries(formData: FormData) {
 
   const title = formData.get("title") as string;
   const status = formData.get("status") as string;
+  // Capturando o ID do TMDB enviado pelo input hidden do formulário
+  const tmdb_id = formData.get("tmdb_id")
+    ? Number(formData.get("tmdb_id"))
+    : null;
 
   const { error } = await supabase.from("series").insert({
     user_id: user.id,
     title,
     status,
+    tmdb_id, // Salvando o ID oficial no banco de dados!
+    current_season: 1, // Força o início padrão na temporada 1
+    current_episode: 1, // Força o início padrão no episódio 1
   });
 
   if (error) {
