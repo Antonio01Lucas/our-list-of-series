@@ -1,0 +1,17 @@
+[33mfb10216[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32minclude-tmdb-api[m[33m)[m refactor: integrate progress update actions and update dashboard layout
+[33mbb8a101[m feat(ui): implement series progress management with modal component
+[33m3a39755[m feat(db): add progress tracking columns (season/episode) and tmdb_id to series table
+[33mb272707[m feat(ui): finalize smart search component and stabilize app configuration
+[33mc204502[m feat(core): implement TMDB search integration and TanStack Query setup
+[33m448de28[m feat: add route handler for API integration
+[33m17f2b82[m[33m ([m[1;31morigin/feature/sistema-de-notas[m[33m)[m fix(auth): ajustar tipagem de login e limpar warnings
+[33ma4a8d71[m fix(auth): restaurar exportacao da funcao login
+[33m1c32f87[m fix(auth): tornar redirecionamento de login dinâmico
+[33m8e814dc[m feat(ui): adicionar formulário de avaliação (rating) nas séries
+[33m1786797[m fix(actions): corrigir sintaxe na função updateSeriesRating
+[33m151612f[m feat(actions): criar função para atualizar rating das séries
+[33md872b22[m feat(db): adicionar coluna rating na tabela series
+[33mfb9b68b[m[33m ([m[1;31morigin/main[m[33m, [m[1;32mmain[m[33m)[m feat: centralize server actions, implement RLS policies, and add logout functionality
+[33m3c3c69d[m Sprint 2: Finalização da UI de Login e integração da Logo personalizada
+[33m9d60396[m feat: implementa autenticação com supabase e login social google
+[33m5dae32d[m chore: initial next.js setup
