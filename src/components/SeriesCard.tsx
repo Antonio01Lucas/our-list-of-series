@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updateSeriesProgress, updateSeriesRating } from "@/actions/series"; // Importada a action de nota
+import { updateSeriesProgress, updateSeriesRating } from "@/actions/series";
 import {
   Dialog,
   DialogContent,
@@ -12,39 +12,51 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Film, Play, CheckCircle2, Bookmark, Star } from "lucide-react"; // Adicionado o ícone Star
+import {
+  Film,
+  Play,
+  CheckCircle2,
+  Bookmark,
+  Star,
+  CalendarDays,
+  Clapperboard,
+} from "lucide-react";
 
 interface Serie {
   id: string | number;
   title: string;
   status: string;
+  media_type: string;
+  poster_path?: string | null;
+  genres?: string[] | null;
+  is_in_production?: boolean;
   current_season: number;
   current_episode: number;
-  rating?: number | null; // Nova propriedade mapeada do banco
+  total_seasons?: number;
+  total_episodes?: number;
+  rating?: number | null;
 }
 
 export function SeriesCard({ serie }: { serie: Serie }) {
   const [open, setOpen] = useState(false);
   const numericId = Number(serie.id);
+  const isMovie = serie.media_type === "movie";
 
   async function handleSubmit(formData: FormData) {
-    const season = Number(formData.get("season"));
-    const episode = Number(formData.get("episode"));
+    const season = isMovie ? 0 : Number(formData.get("season"));
+    const episode = isMovie ? 0 : Number(formData.get("episode"));
     const rating = formData.get("rating")
       ? Number(formData.get("rating"))
       : null;
 
-    // 1. Atualiza o progresso de temporada e episódio
     await updateSeriesProgress(numericId, {
       current_season: season,
       current_episode: episode,
     });
 
-    // 2. Atualiza a nota se ela tiver sido selecionada
     if (rating !== null) {
       await updateSeriesRating(String(serie.id), rating);
     }
-
     setOpen(false);
   }
 
@@ -80,125 +92,188 @@ export function SeriesCard({ serie }: { serie: Serie }) {
   };
 
   return (
-    <div className="flex flex-col justify-between bg-zinc-900/30 border border-zinc-800/90 backdrop-blur-md p-8 rounded-3xl hover:border-zinc-700/80 hover:bg-zinc-900/60 transition-all duration-300 shadow-2xl shadow-black/30 min-h-62.5">
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
-          <div className="space-y-1.5 max-w-[70%]">
-            <h3 className="font-extrabold text-2xl text-zinc-50 tracking-tight leading-tight line-clamp-2">
-              {serie.title}
-            </h3>
+    <div className="flex gap-5 bg-zinc-900/20 border border-zinc-800/90 backdrop-blur-md p-5 rounded-3xl hover:border-zinc-700/80 hover:bg-zinc-900/50 transition-all duration-300 shadow-xl min-h-55">
+      {/* Exibição da Imagem diretamente vinda do Cache do Banco */}
+      {serie.poster_path ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`https://image.tmdb.org/t/p/w154${serie.poster_path}`}
+          alt={serie.title}
+          className="w-24 h-36 object-cover rounded-2xl border border-zinc-800/80 shadow-md shrink-0 my-auto"
+        />
+      ) : (
+        <div className="w-24 h-36 bg-zinc-950 rounded-2xl border border-zinc-800/60 flex items-center justify-center shrink-0 my-auto">
+          {isMovie ? (
+            <Clapperboard className="w-6 h-6 text-zinc-700" />
+          ) : (
+            <Film className="w-6 h-6 text-zinc-700" />
+          )}
+        </div>
+      )}
 
-            {/* Exibição da Nota Estilizada na Dashboard */}
-            {serie.rating ? (
-              <div className="flex items-center gap-1 text-amber-400 font-bold text-sm">
-                <Star className="w-4 h-4 fill-amber-400 stroke-amber-500" />
-                <span>{serie.rating}/10</span>
-              </div>
-            ) : (
-              <span className="text-xs text-zinc-500 font-medium block">
-                Sem nota atribuída
-              </span>
-            )}
+      {/* Conteúdo Textual */}
+      <div className="flex flex-col justify-between w-full">
+        <div>
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="space-y-1">
+              <h3 className="font-extrabold text-lg text-zinc-50 tracking-tight leading-tight line-clamp-2">
+                {serie.title}
+              </h3>
+              {serie.rating ? (
+                <div className="flex items-center gap-1 text-amber-400 font-bold text-xs">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 stroke-amber-500" />
+                  <span>{serie.rating}/10</span>
+                </div>
+              ) : (
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block">
+                  Sem nota
+                </span>
+              )}
+            </div>
+            <div className="shrink-0">{renderStatusBadge(serie.status)}</div>
           </div>
 
-          <div className="w-fit">{renderStatusBadge(serie.status)}</div>
+          {/* Exibição Dinâmica das Tags de Gêneros Cadastrados */}
+          {serie.genres && serie.genres.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-4">
+              {serie.genres.slice(0, 2).map((genre, idx) => (
+                <span
+                  key={idx}
+                  className="text-[10px] bg-zinc-950 text-zinc-400 font-bold border border-zinc-800/60 px-2 py-0.5 rounded-md"
+                >
+                  {genre}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Marcador de Progresso / Detalhe de Produção */}
+          {!isMovie ? (
+            <div className="flex items-center gap-2 text-xs text-zinc-300 font-bold bg-zinc-950/60 border border-zinc-800/80 w-fit px-3 py-1.5 rounded-xl mb-4">
+              <span>
+                T.{" "}
+                <strong className="text-blue-400 font-black">
+                  {serie.current_season}
+                </strong>
+                <span className="text-zinc-600 font-normal">
+                  /{serie.total_seasons}
+                </span>
+              </span>
+              <span className="text-zinc-700">|</span>
+              <span>
+                E.{" "}
+                <strong className="text-blue-400 font-black">
+                  {serie.current_episode}
+                </strong>
+                <span className="text-zinc-600 font-normal">
+                  /{serie.total_episodes}
+                </span>
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-bold bg-zinc-950/40 border border-zinc-800/40 w-fit px-3 py-1.5 rounded-xl mb-4">
+              <Clapperboard className="w-3.5 h-3.5 text-zinc-500" />
+              <span>Filme de Longa Metragem</span>
+            </div>
+          )}
+
+          {/* Badge de Produção Ativa (Se for Série) */}
+          {!isMovie && (
+            <div className="flex items-center gap-1 text-[10px] font-bold tracking-wide mb-4">
+              <CalendarDays className="w-3.5 h-3.5 text-zinc-500" />
+              <span
+                className={
+                  serie.is_in_production
+                    ? "text-emerald-400/90"
+                    : "text-zinc-500"
+                }
+              >
+                {serie.is_in_production
+                  ? "Em Exibição / Lançando"
+                  : "Série Encerrada / Completa"}
+              </span>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2.5 text-sm text-zinc-300 font-semibold bg-zinc-950/60 border border-zinc-800/80 w-fit px-4 py-2 rounded-xl mb-8">
-          <Film className="w-4 h-4 text-zinc-400" />
-          <span>
-            Temporada{" "}
-            <strong className="text-blue-400 text-base">
-              {serie.current_season || 1}
-            </strong>
-          </span>
-          <span className="text-zinc-700">|</span>
-          <span>
-            Episódio{" "}
-            <strong className="text-blue-400 text-base">
-              {serie.current_episode || 1}
-            </strong>
-          </span>
-        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="secondary"
+              className="w-full bg-zinc-800/60 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/40 font-bold transition-all rounded-xl py-4 h-9 text-xs"
+            >
+              {isMovie ? "Atribuir Nota" : "Editar Progresso & Nota"}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-zinc-900 border-zinc-800 text-white rounded-3xl p-8">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black tracking-tight">
+                Atualizar {serie.title}
+              </DialogTitle>
+            </DialogHeader>
+            <form action={handleSubmit} className="space-y-5 mt-4">
+              {/* Bloqueia os inputs de temporada se for Filme e aplica travas máximas se for Série */}
+              {!isMovie && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                      Temporada (Max {serie.total_seasons})
+                    </label>
+                    <Input
+                      name="season"
+                      type="number"
+                      min={1}
+                      max={serie.total_seasons || 99} // TRAVA DINÂMICA
+                      defaultValue={serie.current_season}
+                      className="bg-zinc-950 border-zinc-800 focus-visible:ring-blue-500 rounded-xl py-5 font-bold"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                      Episódio (Max {serie.total_episodes})
+                    </label>
+                    <Input
+                      name="episode"
+                      type="number"
+                      min={1}
+                      max={serie.total_episodes || 999} // TRAVA DINÂMICA
+                      defaultValue={serie.current_episode}
+                      className="bg-zinc-950 border-zinc-800 focus-visible:ring-blue-500 rounded-xl py-5 font-bold"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                  Sua Nota Avaliativa
+                </label>
+                <select
+                  name="rating"
+                  defaultValue={serie.rating || ""}
+                  className="w-full p-3.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm font-bold text-zinc-200 focus:outline-none focus:border-blue-500"
+                >
+                  <option value="">Deixar sem nota</option>
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
+                    <option key={num} value={num}>
+                      ⭐ {num} / 10
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <DialogFooter className="mt-8">
+                <Button
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl py-6 transition-colors tracking-wide"
+                >
+                  Salvar Alterações
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button
-            variant="secondary"
-            className="w-full bg-zinc-800/80 hover:bg-zinc-700 text-zinc-100 border border-zinc-700/50 font-bold tracking-wide transition-all duration-200 rounded-xl py-6 text-sm"
-          >
-            Editar Progresso & Nota
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="bg-zinc-900 border-zinc-800 text-white rounded-3xl p-8">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black tracking-tight">
-              Atualizar {serie.title}
-            </DialogTitle>
-          </DialogHeader>
-          <form action={handleSubmit} className="space-y-5 mt-4">
-            {/* Grid de Temporada e Episódio */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                  Temporada
-                </label>
-                <Input
-                  name="season"
-                  type="number"
-                  defaultValue={serie.current_season || 1}
-                  className="bg-zinc-950 border-zinc-800 focus-visible:ring-blue-500 rounded-xl py-5 font-bold"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                  Episódio
-                </label>
-                <Input
-                  name="episode"
-                  type="number"
-                  defaultValue={serie.current_episode || 1}
-                  className="bg-zinc-950 border-zinc-800 focus-visible:ring-blue-500 rounded-xl py-5 font-bold"
-                />
-              </div>
-            </div>
-
-            {/* Novo Campo: Seletor de Nota (1 a 10) */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                Sua Nota (Algoritmo de IA)
-              </label>
-              <select
-                name="rating"
-                defaultValue={serie.rating || ""}
-                className="w-full p-3.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm font-bold text-zinc-200 focus:outline-none focus:border-blue-500"
-              >
-                <option value="">Deixar sem nota</option>
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
-                  <option key={num} value={num}>
-                    ⭐ {num} / 10{" "}
-                    {num >= 8
-                      ? " - Excelente!"
-                      : num >= 5
-                        ? " - Ok"
-                        : " - Ruim"}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <DialogFooter className="mt-8">
-              <Button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl py-6 transition-colors tracking-wide"
-              >
-                Salvar Alterações
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
