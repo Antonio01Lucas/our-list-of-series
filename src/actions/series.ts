@@ -4,8 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-// Action: Deletar Filme ou Série (CRUD completo)
-export async function deleteSeries(id: number) {
+// Action: Deletar Filme ou Série (CRUD completo com tipagem de ID flexível)
+export async function deleteSeries(id: string | number) {
   const supabase = await createClient();
 
   const {
@@ -13,11 +13,21 @@ export async function deleteSeries(id: number) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Usuário não autenticado");
 
-  const { error } = await supabase
+  // LOGS DE DEPURAÇÃO: Verifique o terminal do VS Code ao clicar na lixeira
+  console.log(
+    `🔥 [SyncWatch DB] Tentando deletar item ID: ${id} (Tipo: ${typeof id}) para o usuário: ${user.id}`,
+  );
+
+  const { error, count } = await supabase
     .from("series")
-    .delete()
+    .delete({ count: "exact" }) // Força o banco a nos responder quantas linhas foram apagadas
     .eq("id", id)
-    .eq("user_id", user.id); // Segurança: garante que ele só delete o que é dele
+    .eq("user_id", user.id);
+
+  console.log(
+    `📊 [SyncWatch DB] Resultado da exclusão -> Linhas afetadas: ${count}, Erro:`,
+    error,
+  );
 
   if (error) {
     console.error("Erro ao deletar item:", error);
@@ -27,9 +37,9 @@ export async function deleteSeries(id: number) {
   revalidatePath("/");
 }
 
-// Action: Atualizar Progresso de Temporadas/Episódios
+// Action: Atualizar Progresso com suporte a ID flexível (string ou number)
 export async function updateSeriesProgress(
-  id: number,
+  id: string | number,
   data: { current_season?: number; current_episode?: number; status?: string },
 ) {
   const supabase = await createClient();
@@ -40,7 +50,7 @@ export async function updateSeriesProgress(
   return { success: true };
 }
 
-// Action: Atualizar Nota Avaliativa
+// Action: Atualizar Nota Avaliativa (1 a 10)
 export async function updateSeriesRating(id: string, rating: number) {
   const supabase = await createClient();
   if (rating < 1 || rating > 10) return { error: "Nota deve ser entre 1 e 10" };
@@ -55,7 +65,7 @@ export async function updateSeriesRating(id: string, rating: number) {
   return { success: true };
 }
 
-// Action: Adicionar Novo Título com Enriquecimento de Dados Avançado
+// Action: Adicionar Novo Título enriquecendo metadados automaticamente pela API
 export async function addSeries(formData: FormData) {
   const supabase = await createClient();
 
@@ -75,7 +85,7 @@ export async function addSeries(formData: FormData) {
   let is_in_production = true;
   let total_seasons = 1;
   let total_episodes = 1;
-  let runtime = 0; // Nova variável
+  let runtime = 0;
 
   if (tmdb_id) {
     const apiKey = process.env.TMDB_API_KEY;
@@ -100,13 +110,12 @@ export async function addSeries(formData: FormData) {
             is_in_production = details.in_production ?? true;
             total_seasons = details.number_of_seasons || 1;
             total_episodes = details.number_of_episodes || 1;
-            // Pega o primeiro tempo do array ou assume a média padrão de 45 min
             runtime = details.episode_run_time?.[0] || 45;
           } else {
             is_in_production = false;
             total_seasons = 0;
             total_episodes = 0;
-            runtime = details.runtime || 0; // Tempo do filme em minutos
+            runtime = details.runtime || 0;
           }
         }
       } catch (err) {
@@ -126,7 +135,7 @@ export async function addSeries(formData: FormData) {
     is_in_production,
     total_seasons,
     total_episodes,
-    runtime, // Salvando a duração no banco!
+    runtime,
     current_season: media_type === "movie" ? 0 : 1,
     current_episode: media_type === "movie" ? 0 : 1,
   });

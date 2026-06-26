@@ -56,16 +56,12 @@ export function SeriesCard({ serie }: { serie: Serie }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // NOVO: Estado para forçar o desaparecimento imediato do card localmente
   const [hasBeenDeleted, setHasBeenDeleted] = useState(false);
 
   const isMovie = serie.media_type === "movie";
   const [selectedSeason, setSelectedSeason] = useState<number>(
     serie.current_season || 1,
   );
-
-  const numericId = Number(serie.id);
 
   const { data: seasonsData, isLoading: isLoadingSeasons } = useQuery<{
     seasons: SeasonDetail[];
@@ -86,7 +82,6 @@ export function SeriesCard({ serie }: { serie: Serie }) {
     ? currentSeasonInfo.episode_count
     : 24;
 
-  // Lógica de Exclusão com Sumiço Instantâneo
   async function handleDelete() {
     if (
       confirm(
@@ -95,12 +90,12 @@ export function SeriesCard({ serie }: { serie: Serie }) {
     ) {
       setIsDeleting(true);
       try {
-        await deleteSeries(numericId);
-        setHasBeenDeleted(true); // 🔥 ATENÇÃO AQUI: Força o componente a desmontar na hora!
-        router.refresh(); // Sincroniza o servidor logo em seguida
+        await deleteSeries(serie.id); // Passa o ID original sem conversões arriscadas
+        setHasBeenDeleted(true);
+        router.refresh();
       } catch (err) {
         console.error(err);
-        setIsDeleting(false); // Remove o sombreado caso ocorra algum erro
+        setIsDeleting(false);
       }
     }
   }
@@ -112,7 +107,8 @@ export function SeriesCard({ serie }: { serie: Serie }) {
       ? Number(formData.get("rating"))
       : null;
 
-    await updateSeriesProgress(numericId, {
+    await updateSeriesProgress(serie.id, {
+      // Passa o ID original sem conversões arriscadas
       current_season: season,
       current_episode: episode,
     });
@@ -123,7 +119,6 @@ export function SeriesCard({ serie }: { serie: Serie }) {
     setOpen(false);
   }
 
-  // GATILHO CRUCIAL: Se o item foi excluído com sucesso, o React não renderiza absolutamente nada
   if (hasBeenDeleted) {
     return null;
   }
@@ -161,7 +156,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
 
   return (
     <div
-      className={`flex gap-5 bg-zinc-900/20 border border-zinc-800/90 backdrop-blur-md p-5 rounded-3xl hover:border-zinc-700/80 hover:bg-zinc-900/50 transition-all duration-300 shadow-xl min-h geometries relative ${isDeleting ? "opacity-30 pointer-events-none" : ""}`}
+      className={`flex gap-5 bg-zinc-900/20 border border-zinc-800/90 backdrop-blur-md p-5 rounded-3xl hover:border-zinc-700/80 hover:bg-zinc-900/50 transition-all duration-300 shadow-xl min-h-55 relative ${isDeleting ? "opacity-30 pointer-events-none" : ""}`}
     >
       {/* Botão de Excluir */}
       <button
