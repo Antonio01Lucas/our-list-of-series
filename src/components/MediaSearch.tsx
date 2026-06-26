@@ -2,9 +2,8 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronsUpDown, Loader2 } from "lucide-react";
-
-import { cn } from "@/lib/utils"; // Certifique-se que este arquivo existe na pasta lib
+import { Check, ChevronsUpDown, Loader2, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -20,46 +19,56 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-// Interface para tipagem dos resultados do TMDB
-interface TMDBResult {
+// 1. Criamos a interface com a estrutura exata que vem da API do TMDB
+interface TMDBMediaItem {
   id: number;
-  title?: string;
   name?: string;
-  release_date?: string;
+  title?: string;
   first_air_date?: string;
-  poster_path: string;
+  release_date?: string;
+  poster_path: string | null;
 }
 
 interface MediaSearchProps {
-  type: "movie" | "tv";
-  onSelect: (media: { id: number; title: string; poster_path: string }) => void;
+  type: "tv" | "movie";
   placeholder?: string;
+  onSelect: (media: {
+    id: number;
+    title: string;
+    poster_path: string | null;
+  }) => void;
 }
 
-export function MediaSearch({ type, onSelect, placeholder }: MediaSearchProps) {
+export function MediaSearch({
+  type,
+  placeholder = "Pesquisar...",
+  onSelect,
+}: MediaSearchProps) {
   const [open, setOpen] = React.useState(false);
+  const [value, setValue] = React.useState("");
   const [search, setSearch] = React.useState("");
-  const [debouncedSearch, setDebouncedSearch] = React.useState("");
 
-  // Debounce para não sobrecarregar a API
   React.useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [search]);
+    const timer = setTimeout(() => {
+      setSearch(value);
+    }, 400);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["tmdbSearch", type, debouncedSearch],
+    return () => clearTimeout(timer);
+  }, [value]);
+
+  // Tipamos o useQuery com <TMDBMediaItem[]> para o Next saber o que esperar no 'data'
+  const { data, isLoading } = useQuery<TMDBMediaItem[]>({
+    queryKey: ["mediaSearch", type, search],
     queryFn: async () => {
-      if (!debouncedSearch) return { results: [] };
-      const res = await fetch(
-        `/api/search?type=${type}&query=${encodeURIComponent(debouncedSearch)}`,
+      if (!search) return [];
+      const response = await fetch(
+        `/api/search?query=${encodeURIComponent(search)}&type=${type}`,
       );
-      if (!res.ok) throw new Error("Falha na busca");
-      return res.json();
+      if (!response.ok) throw new Error("Erro ao buscar dados do catálogo");
+      const resData = await response.json();
+      return resData.results || [];
     },
-    enabled: debouncedSearch.length > 2,
+    enabled: search.length > 0,
   });
 
   return (
@@ -69,53 +78,98 @@ export function MediaSearch({ type, onSelect, placeholder }: MediaSearchProps) {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          // Agora estamos usando o cn! O ESLint vai parar de reclamar
-          className={cn("w-full justify-between", open && "bg-accent")}
+          className={cn(
+            "w-full h-12 justify-between bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900 rounded-xl px-4 font-medium transition-all duration-200 text-left",
+            open && "border-zinc-700 text-zinc-200 ring-2 ring-blue-500/20",
+          )}
         >
-          {placeholder || "Buscar título..."}
+          <div className="flex items-center gap-2.5 truncate w-full">
+            <Search className="w-4 h-4 text-zinc-500 shrink-0" />
+            <span className="truncate">{value ? value : placeholder}</span>
+          </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="'w-75' p-0">
-        <Command shouldFilter={false}>
+
+      <PopoverContent className="w-(--radix-popover-trigger-width)] p-0 bg-zinc-950 border-zinc-800 rounded-xl shadow-2xl overflow-hidden mt-1">
+        <Command className="bg-zinc-950 text-white" shouldFilter={false}>
           <CommandInput
-            placeholder="Pesquisar..."
-            value={search}
-            onValueChange={setSearch}
+            placeholder="Digite o nome oficial..."
+            value={value}
+            onValueChange={setValue}
+            className="border-none focus:ring-0 text-zinc-200 h-12 bg-zinc-950"
           />
-          <CommandList>
+          <CommandList className="max-h-70 overflow-y-auto border-t border-zinc-900/80 custom-scrollbar">
             {isLoading && (
-              <div className="flex justify-center p-4">
-                <Loader2 className="h-4 w-4 animate-spin" />
+              <div className="flex items-center justify-center py-8 text-zinc-400 gap-2.5 text-sm font-medium">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                <span>Consultando TMDB...</span>
               </div>
             )}
-            {!isLoading &&
-              debouncedSearch.length > 2 &&
-              data?.results?.length === 0 && (
-                <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
-              )}
+
+            {!isLoading && search && data?.length === 0 && (
+              <CommandEmpty className="py-8 text-center text-sm text-zinc-500 font-medium">
+                Nenhum título encontrado com esse nome.
+              </CommandEmpty>
+            )}
+
+            {!search && !isLoading && (
+              <div className="py-8 text-center text-sm text-zinc-500 font-medium">
+                Comece a digitar para carregar o catálogo...
+              </div>
+            )}
+
             <CommandGroup>
-              {data?.results?.slice(0, 5).map((item: TMDBResult) => {
-                const title = item.title || item.name || "Sem título";
-                const date = item.release_date || item.first_air_date;
-                const year = date ? ` (${date.split("-")[0]})` : "";
+              {/* O loop agora usa a interface TMDBMediaItem em vez de any */}
+              {data?.map((item: TMDBMediaItem) => {
+                const title = item.name || item.title || "Título Desconhecido";
+                const releaseDate = item.first_air_date || item.release_date;
+                const year = releaseDate
+                  ? `(${releaseDate.split("-")[0]})`
+                  : "";
 
                 return (
                   <CommandItem
                     key={item.id}
-                    value={item.id.toString()}
+                    value={title}
                     onSelect={() => {
+                      setValue(title);
                       onSelect({
                         id: item.id,
-                        title,
+                        title: title,
                         poster_path: item.poster_path,
                       });
                       setOpen(false);
-                      setSearch("");
                     }}
+                    className="flex items-center justify-between py-3.5 px-4 hover:bg-zinc-900/60 cursor-pointer text-zinc-300 data-[selected='true']:bg-zinc-900 data-[selected='true']:text-white transition-colors"
                   >
-                    {title}
-                    {year}
+                    <div className="flex items-center gap-3.5 truncate">
+                      {item.poster_path ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`https://image.tmdb.org/t/p/w92${item.poster_path}`}
+                          alt={title}
+                          className="w-8 h-12 object-cover rounded-lg bg-zinc-900 shrink-0 border border-zinc-800/80 shadow-md"
+                        />
+                      ) : (
+                        <div className="w-8 h-12 bg-zinc-900/80 rounded-lg border border-zinc-800/60 shrink-0 flex items-center justify-center text-[10px] text-zinc-600 font-bold">
+                          N/A
+                        </div>
+                      )}
+                      <span className="font-semibold text-sm tracking-tight truncate text-zinc-200">
+                        {title}
+                        <span className="text-zinc-500 font-medium text-xs ml-1.5">
+                          {year}
+                        </span>
+                      </span>
+                    </div>
+
+                    <Check
+                      className={cn(
+                        "ml-auto h-4 w-4 text-blue-500 opacity-0 transition-opacity",
+                        value === title && "opacity-100",
+                      )}
+                    />
                   </CommandItem>
                 );
               })}
