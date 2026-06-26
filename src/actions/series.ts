@@ -74,3 +74,21 @@ export async function updateSeriesRating(id: string, rating: number) {
   revalidatePath("/");
   return { success: true };
 }
+
+export async function updateSeriesProgress(
+  id: number,
+  data: {
+    current_season?: number;
+    current_episode?: number;
+    status?: string;
+  },
+) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("series").update(data).eq("id", id); // Usamos o ID do banco, garantindo que editamos a série certa
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/series");
+  return { success: true };
+}
