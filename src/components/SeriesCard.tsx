@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation"; // Importado o roteador nativo do Next.js
 import {
   updateSeriesProgress,
   updateSeriesRating,
   deleteSeries,
-} from "@/actions/series"; // Adicionado deleteSeries
+} from "@/actions/series";
 import {
   Dialog,
   DialogContent,
@@ -43,7 +44,7 @@ interface Serie {
   total_seasons?: number;
   total_episodes?: number;
   rating?: number | null;
-  runtime?: number; // Mapeada a nova propriedade
+  runtime?: number;
 }
 
 interface SeasonDetail {
@@ -52,15 +53,19 @@ interface SeasonDetail {
 }
 
 export function SeriesCard({ serie }: { serie: Serie }) {
+  const router = useRouter(); // Inicializa o roteador do cliente
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const isMovie = serie.media_type === "movie";
+
+  // Estado para monitorar qual temporada está selecionada na caixa de diálogo
   const [selectedSeason, setSelectedSeason] = useState<number>(
     serie.current_season || 1,
   );
 
   const numericId = Number(serie.id);
 
+  // Consulta assíncrona para buscar o mapa de episódios por temporada do TMDB
   const { data: seasonsData, isLoading: isLoadingSeasons } = useQuery<{
     seasons: SeasonDetail[];
   }>({
@@ -70,9 +75,10 @@ export function SeriesCard({ serie }: { serie: Serie }) {
       if (!res.ok) throw new Error("Erro ao coletar dados");
       return res.json();
     },
-    enabled: open && !isMovie && !!serie.tmdb_id,
+    enabled: open && !isMovie && !!serie.tmdb_id, // Só dispara se o modal estiver aberto e for série
   });
 
+  // Descobre quantos episódios a temporada selecionada tem de verdade
   const currentSeasonInfo = seasonsData?.seasons?.find(
     (s) => s.season_number === selectedSeason,
   );
@@ -80,6 +86,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
     ? currentSeasonInfo.episode_count
     : 24;
 
+  // Lógica de Exclusão do Card com Refresh Instantâneo
   async function handleDelete() {
     if (
       confirm(
@@ -89,13 +96,15 @@ export function SeriesCard({ serie }: { serie: Serie }) {
       setIsDeleting(true);
       try {
         await deleteSeries(numericId);
+        router.refresh(); // 🔥 Força o Next.js a atualizar os dados da Home e some com o card na hora!
       } catch (err) {
         console.error(err);
-        setIsDeleting(false);
+        setIsDeleting(false); // Desfaz o sombreado se der erro de rede
       }
     }
   }
 
+  // Lógica de Atualização de Progresso e Notas
   async function handleSubmit(formData: FormData) {
     const season = isMovie ? 0 : Number(formData.get("season"));
     const episode = isMovie ? 0 : Number(formData.get("episode"));
@@ -149,7 +158,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
     <div
       className={`flex gap-5 bg-zinc-900/20 border border-zinc-800/90 backdrop-blur-md p-5 rounded-3xl hover:border-zinc-700/80 hover:bg-zinc-900/50 transition-all duration-300 shadow-xl min-h-55 relative ${isDeleting ? "opacity-30 pointer-events-none" : ""}`}
     >
-      {/* Botão de Excluir Discreto e Elegante no Canto Superior Direito */}
+      {/* Botão de Excluir */}
       <button
         onClick={handleDelete}
         disabled={isDeleting}
@@ -163,6 +172,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
         )}
       </button>
 
+      {/* Capa/Poster */}
       {serie.poster_path ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -180,6 +190,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
         </div>
       )}
 
+      {/* Conteúdo Textual */}
       <div className="flex flex-col justify-between w-full pr-6">
         <div>
           <div className="flex flex-col gap-1 mb-2">
@@ -188,7 +199,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
             </h3>
 
             <div className="flex items-center gap-3">
-              {/* Exibição da Duração vinda da API */}
+              {/* Duração vinda da API */}
               {serie.runtime && serie.runtime > 0 && (
                 <div className="flex items-center gap-1 text-zinc-500 text-xs font-medium">
                   <Clock className="w-3 h-3" />
@@ -200,6 +211,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
                 </div>
               )}
 
+              {/* Nota Estilizada */}
               {serie.rating ? (
                 <div className="flex items-center gap-1 text-amber-400 font-bold text-xs">
                   <Star className="w-3.5 h-3.5 fill-amber-400 stroke-amber-500" />
@@ -215,6 +227,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
 
           <div className="mb-3">{renderStatusBadge(serie.status)}</div>
 
+          {/* Tags de Gêneros */}
           {serie.genres && serie.genres.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-4">
               {serie.genres.slice(0, 2).map((genre, idx) => (
@@ -228,6 +241,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
             </div>
           )}
 
+          {/* Marcadores Numéricos de Progresso */}
           {!isMovie ? (
             <div className="flex items-center gap-2 text-xs text-zinc-300 font-bold bg-zinc-950/60 border border-zinc-800/80 w-fit px-3 py-1.5 rounded-xl mb-4">
               <span>
@@ -257,6 +271,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
             </div>
           )}
 
+          {/* Badge de Status de Produção */}
           {!isMovie && (
             <div className="flex items-center gap-1 text-[10px] font-bold tracking-wide mb-4">
               <CalendarDays className="w-3.5 h-3.5 text-zinc-500" />
@@ -275,12 +290,13 @@ export function SeriesCard({ serie }: { serie: Serie }) {
           )}
         </div>
 
+        {/* Modal Dialog de Edição Inteligente */}
         <Dialog
           open={open}
           onOpenChange={(isOpen) => {
             setOpen(isOpen);
             if (isOpen) {
-              setSelectedSeason(serie.current_season || 1);
+              setSelectedSeason(serie.current_season || 1); // Sincroniza sem depender de useEffect
             }
           }}
         >
@@ -301,6 +317,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
             <form action={handleSubmit} className="space-y-5 mt-4">
               {!isMovie && (
                 <div className="grid grid-cols-2 gap-4">
+                  {/* Select de Temporadas */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
                       Temporada
@@ -324,6 +341,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
                     </select>
                   </div>
 
+                  {/* Select de Episódios Travado pelo Máximo Real */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
                       Episódio
@@ -350,6 +368,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
                 </div>
               )}
 
+              {/* Select de Nota Avaliativa */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
                   Sua Nota Avaliativa
