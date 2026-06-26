@@ -15,7 +15,7 @@ const getBaseUrl = () => {
   return "http://localhost:3000";
 };
 
-// Action: Fazer Login
+// Action: Fazer Login (Mantém-se estável e funcional)
 export async function login(prevState: LoginState, formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
@@ -33,7 +33,7 @@ export async function login(prevState: LoginState, formData: FormData) {
   redirect("/");
 }
 
-// Action: Criar Conta Real (Corrigida e turbinada!)
+// Action: Criar Conta Real (Modificada para Redirecionamento Direto! 🚀)
 export async function signup(prevState: LoginState, formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
@@ -58,9 +58,10 @@ export async function signup(prevState: LoginState, formData: FormData) {
 
   console.log("✅ Usuário criado com sucesso no Auth! Dados:", data.user?.id);
 
-  // Como retiramos a confirmação por e-mail no painel, o usuário já nasce ativo!
-  // Devolvemos o sinal de sucesso exatamente no formato que o teu componente espera ler para exibir o texto verde.
-  return { error: "Conta criada! Faça o seu login agora." };
+  // 🔥 MELHORIA CORE DE UX: O utilizador já nasce ativo e logado nos cookies!
+  // Em vez de mandá-lo ler uma mensagem e digitar tudo de novo, jogamo-lo direto para a Home.
+  // Lá, o gateway da Home vai perceber que o 'onboarding_completed' dele é falso e abrirá a calibração automaticamente.
+  redirect("/");
 }
 
 // Action: Login com Google
