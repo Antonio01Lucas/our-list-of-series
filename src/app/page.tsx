@@ -23,7 +23,7 @@ export default async function HomePage() {
     .order("created_at", { ascending: false });
 
   return (
-    <div className="min-h-screen bg-zinc-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-900/40 via-zinc-950 to-zinc-950 text-white p-6 sm:p-12">
+    <div className="min-h-screen bg-zinc-950 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-zinc-900/40 via-zinc-950 to-zinc-950 text-white p-6 sm:p-12">
       {/* Container expandido para max-w-6xl */}
       <div className="max-w-6xl mx-auto">
         {/* Cabeçalho */}
@@ -37,7 +37,7 @@ export default async function HomePage() {
 
             <Link href="/series/new">
               <Button className="bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl gap-2 px-5 py-6 shadow-xl shadow-blue-600/10 transition-all duration-200 tracking-wide text-sm">
-                <Plus className="w-4 h-4 stroke-[3]" /> Adicionar Série
+                <Plus className="w-4 h-4 stroke-3" /> Adicionar Série
               </Button>
             </Link>
           </div>
