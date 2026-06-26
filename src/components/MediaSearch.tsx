@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, ChevronsUpDown, Loader2, Search } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Search, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +19,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-// 1. Criamos a interface com a estrutura exata que vem da API do TMDB
 interface TMDBMediaItem {
   id: number;
   name?: string;
@@ -27,10 +26,11 @@ interface TMDBMediaItem {
   first_air_date?: string;
   release_date?: string;
   poster_path: string | null;
+  profile_path?: string | null;
 }
 
 interface MediaSearchProps {
-  type: "tv" | "movie";
+  type: "tv" | "movie" | "person";
   placeholder?: string;
   onSelect: (media: {
     id: number;
@@ -56,7 +56,6 @@ export function MediaSearch({
     return () => clearTimeout(timer);
   }, [value]);
 
-  // Tipamos o useQuery com <TMDBMediaItem[]> para o Next saber o que esperar no 'data'
   const { data, isLoading } = useQuery<TMDBMediaItem[]>({
     queryKey: ["mediaSearch", type, search],
     queryFn: async () => {
@@ -74,32 +73,43 @@ export function MediaSearch({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
+        {/* 🌟 UPGRADE DE ESCALA: Botão expandido para h-[60px], cantos arredondados premium e textos/ícones maiores */}
         <Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full h-12 justify-between bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900 rounded-xl px-4 font-medium transition-all duration-200 text-left",
-            open && "border-zinc-700 text-zinc-200 ring-2 ring-blue-500/20",
+            "w-full h-15 justify-between bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900 rounded-2xl px-5 text-sm sm:text-base font-medium transition-all duration-200 text-left shadow-inner",
+            open && "border-zinc-700 text-zinc-200 ring-4 ring-blue-500/10",
           )}
         >
-          <div className="flex items-center gap-2.5 truncate w-full">
-            <Search className="w-4 h-4 text-zinc-500 shrink-0" />
-            <span className="truncate">{value ? value : placeholder}</span>
+          <div className="flex items-center gap-3 truncate w-full">
+            <Search className="w-5 h-5 text-zinc-500 shrink-0" />
+            <span className="truncate tracking-wide">
+              {value ? value : placeholder}
+            </span>
           </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-40 group-hover:opacity-70 transition-opacity" />
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-(--radix-popover-trigger-width)] p-0 bg-zinc-950 border-zinc-800 rounded-xl shadow-2xl overflow-hidden mt-1">
+      <PopoverContent
+        align="start"
+        className="w-[92vw] sm:w-175 p-0 bg-zinc-950 border-zinc-800 rounded-xl shadow-2xl overflow-hidden mt-2"
+      >
+        {" "}
         <Command className="bg-zinc-950 text-white" shouldFilter={false}>
           <CommandInput
-            placeholder="Digite o nome oficial..."
+            placeholder={
+              type === "person"
+                ? "Digite o nome da celebridade..."
+                : "Digite o nome oficial..."
+            }
             value={value}
             onValueChange={setValue}
             className="border-none focus:ring-0 text-zinc-200 h-12 bg-zinc-950"
           />
-          <CommandList className="max-h-70 overflow-y-auto border-t border-zinc-900/80 custom-scrollbar">
+          <CommandList className="max-h-80 overflow-y-auto border-t border-zinc-900/80 custom-scrollbar">
             {isLoading && (
               <div className="flex items-center justify-center py-8 text-zinc-400 gap-2.5 text-sm font-medium">
                 <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
@@ -109,58 +119,62 @@ export function MediaSearch({
 
             {!isLoading && search && data?.length === 0 && (
               <CommandEmpty className="py-8 text-center text-sm text-zinc-500 font-medium">
-                Nenhum título encontrado com esse nome.
+                Nenhum resultado encontrado.
               </CommandEmpty>
             )}
 
             {!search && !isLoading && (
               <div className="py-8 text-center text-sm text-zinc-500 font-medium">
-                Comece a digitar para carregar o catálogo...
+                Comece a digitar para carregar...
               </div>
             )}
 
             <CommandGroup>
-              {/* O loop agora usa a interface TMDBMediaItem em vez de any */}
               {data?.map((item: TMDBMediaItem) => {
-                const title = item.name || item.title || "Título Desconhecido";
+                const title = item.name || item.title || "Desconhecido";
                 const releaseDate = item.first_air_date || item.release_date;
-                const year = releaseDate
-                  ? `(${releaseDate.split("-")[0]})`
-                  : "";
+                const year =
+                  releaseDate && type !== "person"
+                    ? `(${releaseDate.split("-")[0]})`
+                    : "";
+                const imagePath = item.poster_path || item.profile_path || null;
 
                 return (
                   <CommandItem
                     key={item.id}
                     value={title}
                     onSelect={() => {
-                      setValue(title);
+                      setValue("");
                       onSelect({
                         id: item.id,
                         title: title,
-                        poster_path: item.poster_path,
+                        poster_path: imagePath,
                       });
                       setOpen(false);
                     }}
-                    className="flex items-center justify-between py-3.5 px-4 hover:bg-zinc-900/60 cursor-pointer text-zinc-300 data-[selected='true']:bg-zinc-900 data-[selected='true']:text-white transition-colors"
+                    className="flex items-center justify-between py-3 px-4 hover:bg-zinc-900/60 cursor-pointer text-zinc-300 data-[selected='true']:bg-zinc-900 data-[selected='true']:text-white transition-colors"
                   >
-                    <div className="flex items-center gap-3.5 truncate">
-                      {item.poster_path ? (
+                    <div className="flex items-center gap-4 truncate">
+                      {imagePath ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={`https://image.tmdb.org/t/p/w92${item.poster_path}`}
+                          src={`https://image.tmdb.org/t/p/w185${imagePath}`}
                           alt={title}
-                          className="w-8 h-12 object-cover rounded-lg bg-zinc-900 shrink-0 border border-zinc-800/80 shadow-md"
+                          className="w-14 h-20 object-cover rounded-xl bg-zinc-900 shrink-0 border border-zinc-800/80 shadow-lg"
                         />
                       ) : (
-                        <div className="w-8 h-12 bg-zinc-900/80 rounded-lg border border-zinc-800/60 shrink-0 flex items-center justify-center text-[10px] text-zinc-600 font-bold">
-                          N/A
+                        <div className="w-14 h-20 bg-zinc-900/80 rounded-xl border border-zinc-800/60 shrink-0 flex flex-col items-center justify-center gap-1 text-[10px] text-zinc-600 font-bold">
+                          <User className="w-4 h-4 text-zinc-700" />
+                          <span>N/A</span>
                         </div>
                       )}
-                      <span className="font-semibold text-sm tracking-tight truncate text-zinc-200">
+                      <span className="font-bold text-sm tracking-tight truncate text-zinc-200">
                         {title}
-                        <span className="text-zinc-500 font-medium text-xs ml-1.5">
-                          {year}
-                        </span>
+                        {year && (
+                          <span className="text-zinc-500 font-medium text-xs ml-1.5">
+                            {year}
+                          </span>
+                        )}
                       </span>
                     </div>
 
