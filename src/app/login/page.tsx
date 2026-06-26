@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/logo";
 import { Lock, Mail, AlertCircle } from "lucide-react";
 
-// Estado inicial para o form action
 const initialState = { error: "" };
 
 export default function LoginPage() {
@@ -15,7 +14,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // Next.js useActionState para gerenciar o estado da Server Action de forma nativa
   const [loginState, loginAction, isLoginPending] = useActionState(
     login,
     initialState,
@@ -28,37 +26,35 @@ export default function LoginPage() {
   const activeState = isSignUp ? signupState : loginState;
   const isPending = isLoginPending || isSignupPending;
 
-  // Lógica de Validação Estrita do Botão
   const isEmailValid = email.includes("@") && email.includes(".");
   const isPasswordValid = password.length >= 6;
-
-  // O botão só libera se o e-mail for minimamente válido e a senha tiver 6 ou mais dígitos
   const isButtonDisabled = !isEmailValid || !isPasswordValid || isPending;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
       {/* Efeito de Iluminação de Fundo */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.06),transparent_50%)] pointer-events-none" />
 
-      <div className="max-w-md w-full bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-2xl p-8 rounded-3xl shadow-2xl relative z-10 space-y-8 animate-in fade-in zoom-in-95 duration-300">
-        {/* Logo & Subtítulo */}
-        <div className="flex flex-col items-center text-center space-y-2">
+      {/* Card Otimizado: Reduzido p-8 para p-6 e space-y-8 para space-y-5 */}
+      <div className="max-w-md w-full bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-2xl p-6 rounded-2xl shadow-2xl relative z-10 space-y-5 animate-in fade-in zoom-in-95 duration-300">
+        {/* Logo & Subtítulo mais colados */}
+        <div className="flex flex-col items-center text-center space-y-1">
           <Logo />
-          <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest pt-2">
+          <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest pt-1">
             {isSignUp
               ? "Crie sua conta no ecossistema"
               : "Monitore suas maratonas de cinema"}
           </p>
         </div>
 
-        {/* Formulário de Ação */}
+        {/* Formulário Compacto */}
         <form
           action={isSignUp ? signupAction : loginAction}
-          className="space-y-4"
+          className="space-y-3.5"
         >
           {/* Campo E-mail */}
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+          <div className="space-y-1">
+            <label className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
               <Mail className="w-3.5 h-3.5 text-zinc-500" /> E-mail
             </label>
             <Input
@@ -68,13 +64,13 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="seu-email@exemplo.com"
-              className="bg-zinc-950 border-zinc-800 rounded-xl h-12 focus-visible:ring-blue-500/50 text-sm"
+              className="bg-zinc-950 border-zinc-800 rounded-xl h-11 focus-visible:ring-blue-500/50 text-sm"
             />
           </div>
 
           {/* Campo Senha */}
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+          <div className="space-y-1">
+            <label className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
               <Lock className="w-3.5 h-3.5 text-zinc-500" /> Senha
             </label>
             <Input
@@ -84,35 +80,35 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="bg-zinc-950 border-zinc-800 rounded-xl h-12 focus-visible:ring-blue-500/50 text-sm"
+              className="bg-zinc-950 border-zinc-800 rounded-xl h-11 focus-visible:ring-blue-500/50 text-sm"
             />
 
-            {/* Indicador de Requisito de Senha (Dígitos) */}
-            <div className="flex items-center gap-1.5 pt-1">
+            {/* Indicador de Requisito de Senha */}
+            <div className="flex items-center gap-1.5 pt-0.5">
               <div
                 className={`w-1.5 h-1.5 rounded-full transition-colors ${isPasswordValid ? "bg-emerald-500" : "bg-zinc-700"}`}
               />
               <span
-                className={`text-[11px] font-bold tracking-wide transition-colors ${isPasswordValid ? "text-emerald-400/90" : "text-zinc-500"}`}
+                className={`text-[10px] font-bold tracking-wide transition-colors ${isPasswordValid ? "text-emerald-400/90" : "text-zinc-500"}`}
               >
                 Mínimo de 6 caracteres
               </span>
             </div>
           </div>
 
-          {/* Alert de Erro caso o Supabase recuse algo */}
+          {/* Alert de Erro */}
           {activeState?.error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl p-3 flex items-start gap-2.5 text-xs font-semibold animate-in shake duration-300">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl p-2.5 flex items-start gap-2 text-xs font-semibold animate-in shake duration-300">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               <span>{activeState.error}</span>
             </div>
           )}
 
-          {/* Botão de Submissão Inteligente Controlado por Estado */}
+          {/* Botão de Submissão h-11 */}
           <Button
             type="submit"
             disabled={isButtonDisabled}
-            className={`w-full h-12 font-extrabold rounded-xl text-sm uppercase tracking-wider shadow-lg transition-all duration-300 mt-2 ${
+            className={`w-full h-11 font-extrabold rounded-xl text-xs uppercase tracking-wider shadow-lg transition-all duration-300 mt-1 ${
               isSignUp
                 ? "bg-linear-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white"
                 : "bg-zinc-100 hover:bg-white text-zinc-950"
@@ -126,20 +122,20 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        {/* Divisor Visual */}
-        <div className="relative flex py-2 items-center text-xs font-bold uppercase tracking-widest text-zinc-600">
-          <div className="grow border-t border-zinc-900" />
-          <span className="shrink mx-4">Ou conectar com</span>
+        {/* Divisor Visual Reduzido */}
+        <div className="relative flex py-1 items-center text-[10px] font-black uppercase tracking-widest text-zinc-600">
+          <div className="-grow border-t border-zinc-900" />
+          <span className="shrink mx-3">Ou conectar com</span>
           <div className="grow border-t border-zinc-900" />
         </div>
 
-        {/* Provedor OAuth: Google */}
+        {/* Google OAuth h-11 */}
         <Button
           onClick={() => signInWithGoogle()}
           variant="outline"
-          className="w-full h-12 border-zinc-800 bg-zinc-950/40 hover:bg-zinc-900 text-zinc-300 font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition"
+          className="w-full h-11 border-zinc-800 bg-zinc-950/40 hover:bg-zinc-900 text-zinc-300 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition"
         >
-          <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5 mr-1" viewBox="0 0 24 24">
             <path
               fill="currentColor"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -160,12 +156,11 @@ export default function LoginPage() {
           Google Cloud Account
         </Button>
 
-        {/* Alternador de Estado (Login <-> Cadastro) */}
-        <div className="text-center pt-2">
+        {/* Alternador de Estado */}
+        <div className="text-center pt-1">
           <button
             onClick={() => {
               setIsSignUp(!isSignUp);
-              // Limpa a senha ao alternar para evitar travas visuais
               setPassword("");
             }}
             className="text-xs font-bold text-zinc-500 hover:text-blue-400 transition-colors tracking-wide"

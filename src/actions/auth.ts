@@ -58,6 +58,8 @@ export async function signup(prevState: LoginState, formData: FormData) {
 
   console.log("✅ Usuário criado com sucesso no Auth! Dados:", data.user?.id);
 
+  redirect("/onboarding");
+  // 🔥 AJUSTE DE FLUXO: Envia o usuário imediatamente para o Onboarding após o cadastro
   // 🔥 MELHORIA CORE DE UX: O utilizador já nasce ativo e logado nos cookies!
   // Em vez de mandá-lo ler uma mensagem e digitar tudo de novo, jogamo-lo direto para a Home.
   // Lá, o gateway da Home vai perceber que o 'onboarding_completed' dele é falso e abrirá a calibração automaticamente.
