@@ -4,6 +4,36 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+// 1. Ação para Adicionar Série (Aceitando apenas o formData nativo do Next.js)
+export async function addSeries(formData: FormData) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const title = formData.get("title") as string;
+  const status = formData.get("status") as string;
+
+  const { error } = await supabase.from("series").insert({
+    user_id: user.id,
+    title,
+    status,
+  });
+
+  if (error) {
+    console.error("Erro ao inserir série:", error);
+    return;
+  }
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+// 2. Ação para atualizar status rápido (Assistindo -> Finalizado)
 export async function updateSeriesStatus(id: string, newStatus: string) {
   const supabase = await createClient();
 
@@ -13,55 +43,18 @@ export async function updateSeriesStatus(id: string, newStatus: string) {
     .eq("id", id);
 
   if (error) {
-    console.error("Erro ao atualizar:", error);
+    console.error("Erro ao atualizar status:", error);
     throw new Error("Falha ao atualizar o status.");
   }
 
-  revalidatePath("/"); // Isso avisa ao Next.js que os dados mudaram
+  revalidatePath("/");
   return { success: true };
 }
 
-type ActionState = {
-  error: string;
-};
-export async function addSeries(_prevState: ActionState, formData: FormData) {
-  const supabase = await createClient();
-
-  // 1. Verifica quem está logado
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { error: "Usuário não autenticado" };
-  }
-
-  // ... resto do seu código permanece igual
-
-  // 2. Pega os dados do form
-  const title = formData.get("title") as string;
-  const status = formData.get("status") as string;
-
-  // 3. Salva no banco
-  const { error } = await supabase.from("series").insert({
-    user_id: user.id,
-    title,
-    status,
-  });
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  // 4. Se deu certo, atualiza a home e redireciona
-  revalidatePath("/");
-  redirect("/");
-}
-
-// src/actions/series.ts
+// 3. Ação para atualizar Nota de 1 a 10
 export async function updateSeriesRating(id: string, rating: number) {
   const supabase = await createClient();
 
-  // Validação simples para garantir que a nota é de 1 a 10
   if (rating < 1 || rating > 10) return { error: "Nota deve ser entre 1 e 10" };
 
   const { error } = await supabase
@@ -75,6 +68,7 @@ export async function updateSeriesRating(id: string, rating: number) {
   return { success: true };
 }
 
+// 4. Ação para atualizar progresso de temporadas e episódios
 export async function updateSeriesProgress(
   id: number,
   data: {
@@ -85,10 +79,10 @@ export async function updateSeriesProgress(
 ) {
   const supabase = await createClient();
 
-  const { error } = await supabase.from("series").update(data).eq("id", id); // Usamos o ID do banco, garantindo que editamos a série certa
+  const { error } = await supabase.from("series").update(data).eq("id", id);
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/series");
+  revalidatePath("/");
   return { success: true };
 }
