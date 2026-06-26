@@ -39,7 +39,7 @@ export default function OnboardingPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
           <Button
-            onClick={() => router.push("/onboarding/perguntas")}
+            onClick={() => router.push("/onboarding/questions")}
             disabled={loading}
             className="bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-2xl py-6 tracking-wide flex items-center justify-center gap-2 text-sm order-2 sm:order-1"
           >
