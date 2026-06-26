@@ -73,24 +73,31 @@ export function MediaSearch({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
+        {/* 🌟 UPGRADE DE ESCALA: Botão expandido para h-[60px], cantos arredondados premium e textos/ícones maiores */}
         <Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full h-12 justify-between bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900 rounded-xl px-4 font-medium transition-all duration-200 text-left",
-            open && "border-zinc-700 text-zinc-200 ring-2 ring-blue-500/20",
+            "w-full h-15 justify-between bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900 rounded-2xl px-5 text-sm sm:text-base font-medium transition-all duration-200 text-left shadow-inner",
+            open && "border-zinc-700 text-zinc-200 ring-4 ring-blue-500/10",
           )}
         >
-          <div className="flex items-center gap-2.5 truncate w-full">
-            <Search className="w-4 h-4 text-zinc-500 shrink-0" />
-            <span className="truncate">{value ? value : placeholder}</span>
+          <div className="flex items-center gap-3 truncate w-full">
+            <Search className="w-5 h-5 text-zinc-500 shrink-0" />
+            <span className="truncate tracking-wide">
+              {value ? value : placeholder}
+            </span>
           </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-40 group-hover:opacity-70 transition-opacity" />
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-(--radix-popover-trigger-width)] p-0 bg-zinc-950 border-zinc-800 rounded-xl shadow-2xl overflow-hidden mt-1">
+      <PopoverContent
+        align="start"
+        className="w-[92vw] sm:w-175 p-0 bg-zinc-950 border-zinc-800 rounded-xl shadow-2xl overflow-hidden mt-2"
+      >
+        {" "}
         <Command className="bg-zinc-950 text-white" shouldFilter={false}>
           <CommandInput
             placeholder={
@@ -130,8 +137,6 @@ export function MediaSearch({
                   releaseDate && type !== "person"
                     ? `(${releaseDate.split("-")[0]})`
                     : "";
-
-                // 🌟 CORREÇÃO AQUI: adicionado o "|| null" no final do encadeamento para sanar o undefined
                 const imagePath = item.poster_path || item.profile_path || null;
 
                 return (
