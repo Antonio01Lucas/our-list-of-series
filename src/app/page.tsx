@@ -49,14 +49,14 @@ export default async function DashboardPage() {
         {/* Lado Direito: Ação de Controle da Biblioteca */}
         <div className="flex items-center gap-3">
           <Button className="bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs uppercase tracking-wider h-11 px-5 rounded-xl gap-2 transition-all duration-200 shadow-lg shadow-blue-950/30 w-full sm:w-auto">
-            <Plus className="w-4 h-4 stroke-[3]" />
+            <Plus className="w-4 h-4 stroke-3" />
             <span>Adicionar Mídia</span>
           </Button>
         </div>
       </div>
 
       {/* ⚡ CARD DO MOTOR DE INTELIGÊNCIA ARTIFICIAL */}
-      <div className="bg-gradient-to-r from-zinc-900 via-zinc-900 to-amber-950/10 border border-zinc-800/80 p-6 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl relative overflow-hidden">
+      <div className="bg-linear-to-r from-zinc-900 via-zinc-900 to-amber-950/10 border border-zinc-800/80 p-6 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl relative overflow-hidden">
         <div className="space-y-1 relative z-10">
           <h3 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-400" />
@@ -67,7 +67,7 @@ export default async function DashboardPage() {
             sugestões personalizadas de mídias baseadas no seu perfil de IA.
           </p>
         </div>
-        <Button className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-black text-xs uppercase tracking-wider h-12 px-6 rounded-xl gap-2 shadow-lg shadow-amber-950/40 shrink-0 w-full md:w-auto relative z-10">
+        <Button className="bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-black text-xs uppercase tracking-wider h-12 px-6 rounded-xl gap-2 shadow-lg shadow-amber-950/40 shrink-0 w-full md:w-auto relative z-10">
           <Sparkles className="w-4 h-4 fill-current" />
           Gerar Sugestões por IA
         </Button>
