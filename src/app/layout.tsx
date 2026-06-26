@@ -1,22 +1,29 @@
-// src/app/layout.tsx
 import type { Metadata } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google"; // Carregando a nova fonte
 import "./globals.css";
-import { Providers } from "@/components/providers"; // Importando o Provider
+import { Providers } from "@/components/providers";
+
+// Configurando a fonte
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
-  title: "SyncWatch", // Ajuste para o nome do seu projeto
+  title: "SyncWatch",
   description: "Sua plataforma de filmes e séries",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="pt-BR">
-      <body className="antialiased">
-        {/* O Providers envolve todo o conteúdo do seu app */}
+    <html lang="pt-BR" className="dark">
+      <body
+        className={`${plusJakartaSans.className} bg-zinc-950 text-white antialiased`}
+      >
         <Providers>{children}</Providers>
       </body>
     </html>
