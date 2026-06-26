@@ -8,11 +8,11 @@ import Link from "next/link";
 import { ArrowLeft, Film, Sparkles } from "lucide-react";
 
 export default function NewSeriesPage() {
-  // Estado para armazenar a série escolhida via API do TMDB
+  // CORREÇÃO: Alinhamos a tipografia do estado para aceitar 'string | null'
   const [selectedMedia, setSelectedMedia] = useState<{
     id: number;
     title: string;
-    poster_path: string;
+    poster_path: string | null;
   } | null>(null);
 
   return (
