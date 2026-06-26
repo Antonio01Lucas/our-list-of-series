@@ -1,23 +1,24 @@
-import type { Metadata } from 'next'
-import './globals.css'
-import { Geist } from "next/font/google";
-import { cn } from "@/lib/utils";
-
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+// src/app/layout.tsx
+import type { Metadata } from "next";
+import "./globals.css";
+import { Providers } from "@/components/providers"; // Importando o Provider
 
 export const metadata: Metadata = {
-  title: 'SyncWatch',
-  description: 'Seu sistema de gestão de séries',
-}
+  title: "SyncWatch", // Ajuste para o nome do seu projeto
+  description: "Sua plataforma de filmes e séries",
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="pt-br" className={cn("font-sans", geist.variable)}>
-      <body>{children}</body>
+    <html lang="pt-BR">
+      <body className="antialiased">
+        {/* O Providers envolve todo o conteúdo do seu app */}
+        <Providers>{children}</Providers>
+      </body>
     </html>
-  )
+  );
 }
