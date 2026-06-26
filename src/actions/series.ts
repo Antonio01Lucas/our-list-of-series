@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-// Action: Deletar Filme ou Série (CRUD completo com tipagem de ID flexível)
+// Action: Deletar Filme ou Série (CRUD totalmente blindado)
 export async function deleteSeries(id: string | number) {
   const supabase = await createClient();
 
@@ -13,55 +13,67 @@ export async function deleteSeries(id: string | number) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Usuário não autenticado");
 
-  // LOGS DE DEPURAÇÃO: Verifique o terminal do VS Code ao clicar na lixeira
-  console.log(
-    `🔥 [SyncWatch DB] Tentando deletar item ID: ${id} (Tipo: ${typeof id}) para o usuário: ${user.id}`,
-  );
+  // Garante a conversão correta para o tipo numérico do BIGSERIAL do Postgres
+  const targetId =
+    typeof id === "string" && !isNaN(Number(id)) ? Number(id) : id;
+
+  console.log(`🔥 [SyncWatch DB] Disparando DELETE para o ID: ${targetId}`);
 
   const { error, count } = await supabase
     .from("series")
-    .delete({ count: "exact" }) // Força o banco a nos responder quantas linhas foram apagadas
-    .eq("id", id)
-    .eq("user_id", user.id);
+    .delete({ count: "exact" }) // Exige a contagem exata
+    .eq("id", targetId); // Deixamos apenas o ID aqui! O RLS se encarrega do user_id.
 
-  console.log(
-    `📊 [SyncWatch DB] Resultado da exclusão -> Linhas afetadas: ${count}, Erro:`,
-    error,
-  );
+  console.log(`📊 [SyncWatch DB] Linhas afetadas: ${count}, Erro:`, error);
 
   if (error) {
-    console.error("Erro ao deletar item:", error);
-    throw new Error("Falha ao deletar o item.");
+    throw new Error(error.message);
   }
 
-  revalidatePath("/");
+  // Se mesmo sem o filtro o banco retornar 0, a sua política RLS no painel do Supabase precisa de um ajuste
+  if (count === 0) {
+    throw new Error(
+      "O RLS do Supabase bloqueou a exclusão. Verifique as permissões de DELETE no painel.",
+    );
+  }
+
+  revalidatePath("/", "layout");
 }
 
-// Action: Atualizar Progresso com suporte a ID flexível (string ou number)
+// Action: Atualizar Progresso
 export async function updateSeriesProgress(
   id: string | number,
   data: { current_season?: number; current_episode?: number; status?: string },
 ) {
   const supabase = await createClient();
-  const { error } = await supabase.from("series").update(data).eq("id", id);
+  const targetId =
+    typeof id === "string" && !isNaN(Number(id)) ? Number(id) : id;
+
+  const { error } = await supabase
+    .from("series")
+    .update(data)
+    .eq("id", targetId);
 
   if (error) return { success: false, error: error.message };
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   return { success: true };
 }
 
-// Action: Atualizar Nota Avaliativa (1 a 10)
-export async function updateSeriesRating(id: string, rating: number) {
+// Action: Atualizar Nota Avaliativa
+export async function updateSeriesRating(id: string | number, rating: number) {
   const supabase = await createClient();
   if (rating < 1 || rating > 10) return { error: "Nota deve ser entre 1 e 10" };
+
+  const targetId =
+    typeof id === "string" && !isNaN(Number(id)) ? Number(id) : id;
 
   const { error } = await supabase
     .from("series")
     .update({ rating })
-    .eq("id", id);
+    .eq("id", targetId);
   if (error) throw new Error("Erro ao salvar nota");
 
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   return { success: true };
 }
 
@@ -145,6 +157,6 @@ export async function addSeries(formData: FormData) {
     return;
   }
 
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   redirect("/");
 }

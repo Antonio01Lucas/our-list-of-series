@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"; // 🔥 ISSO SEPARA O APP DOS PROBLEMAS DE CACHE! Força busca limpa no DB a cada f5.
+
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/logo";

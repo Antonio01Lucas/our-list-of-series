@@ -90,12 +90,18 @@ export function SeriesCard({ serie }: { serie: Serie }) {
     ) {
       setIsDeleting(true);
       try {
-        await deleteSeries(serie.id); // Passa o ID original sem conversões arriscadas
+        await deleteSeries(serie.id);
         setHasBeenDeleted(true);
         router.refresh();
       } catch (err) {
+        // SOLUÇÃO: Removemos o ': any' daqui para o ESLint ficar feliz
         console.error(err);
         setIsDeleting(false);
+
+        // Tratamos o erro como uma instância real para ler a mensagem de forma segura
+        const errorMessage =
+          err instanceof Error ? err.message : "Erro desconhecido";
+        alert(`Erro ao deletar: ${errorMessage}`);
       }
     }
   }
@@ -108,7 +114,6 @@ export function SeriesCard({ serie }: { serie: Serie }) {
       : null;
 
     await updateSeriesProgress(serie.id, {
-      // Passa o ID original sem conversões arriscadas
       current_season: season,
       current_episode: episode,
     });
