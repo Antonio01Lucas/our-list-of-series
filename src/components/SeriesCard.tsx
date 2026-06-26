@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { updateSeriesProgress, updateSeriesRating } from "@/actions/series";
+import {
+  updateSeriesProgress,
+  updateSeriesRating,
+  deleteSeries,
+} from "@/actions/series"; // Adicionado deleteSeries
 import {
   Dialog,
   DialogContent,
@@ -21,6 +25,8 @@ import {
   CalendarDays,
   Clapperboard,
   Loader2,
+  Clock,
+  Trash2,
 } from "lucide-react";
 
 interface Serie {
@@ -37,6 +43,7 @@ interface Serie {
   total_seasons?: number;
   total_episodes?: number;
   rating?: number | null;
+  runtime?: number; // Mapeada a nova propriedade
 }
 
 interface SeasonDetail {
@@ -46,16 +53,14 @@ interface SeasonDetail {
 
 export function SeriesCard({ serie }: { serie: Serie }) {
   const [open, setOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const isMovie = serie.media_type === "movie";
-
-  // Estado para monitorar qual temporada está selecionada na caixa de diálogo
   const [selectedSeason, setSelectedSeason] = useState<number>(
     serie.current_season || 1,
   );
 
   const numericId = Number(serie.id);
 
-  // Consulta assíncrona para buscar o mapa de episódios por temporada do TMDB
   const { data: seasonsData, isLoading: isLoadingSeasons } = useQuery<{
     seasons: SeasonDetail[];
   }>({
@@ -65,16 +70,31 @@ export function SeriesCard({ serie }: { serie: Serie }) {
       if (!res.ok) throw new Error("Erro ao coletar dados");
       return res.json();
     },
-    enabled: open && !isMovie && !!serie.tmdb_id, // Só dispara se o modal estiver aberto e for série
+    enabled: open && !isMovie && !!serie.tmdb_id,
   });
 
-  // Descobre quantos episódios a temporada selecionada tem de verdade
   const currentSeasonInfo = seasonsData?.seasons?.find(
     (s) => s.season_number === selectedSeason,
   );
   const maxEpisodesForSelectedSeason = currentSeasonInfo
     ? currentSeasonInfo.episode_count
     : 24;
+
+  async function handleDelete() {
+    if (
+      confirm(
+        `Tem certeza que deseja remover "${serie.title}" da sua biblioteca?`,
+      )
+    ) {
+      setIsDeleting(true);
+      try {
+        await deleteSeries(numericId);
+      } catch (err) {
+        console.error(err);
+        setIsDeleting(false);
+      }
+    }
+  }
 
   async function handleSubmit(formData: FormData) {
     const season = isMovie ? 0 : Number(formData.get("season"));
@@ -96,7 +116,7 @@ export function SeriesCard({ serie }: { serie: Serie }) {
 
   const renderStatusBadge = (status: string) => {
     const baseClass =
-      "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide backdrop-blur-md";
+      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide backdrop-blur-md";
     switch (status.toLowerCase()) {
       case "assistindo":
         return (
@@ -126,7 +146,23 @@ export function SeriesCard({ serie }: { serie: Serie }) {
   };
 
   return (
-    <div className="flex gap-5 bg-zinc-900/20 border border-zinc-800/90 backdrop-blur-md p-5 rounded-3xl hover:border-zinc-700/80 hover:bg-zinc-900/50 transition-all duration-300 shadow-xl min-h-55">
+    <div
+      className={`flex gap-5 bg-zinc-900/20 border border-zinc-800/90 backdrop-blur-md p-5 rounded-3xl hover:border-zinc-700/80 hover:bg-zinc-900/50 transition-all duration-300 shadow-xl min-h-55 relative ${isDeleting ? "opacity-30 pointer-events-none" : ""}`}
+    >
+      {/* Botão de Excluir Discreto e Elegante no Canto Superior Direito */}
+      <button
+        onClick={handleDelete}
+        disabled={isDeleting}
+        className="absolute top-4 right-4 text-zinc-600 hover:text-red-400 p-1.5 rounded-lg hover:bg-zinc-950/40 transition-colors z-10"
+        title="Remover da Biblioteca"
+      >
+        {isDeleting ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Trash2 className="w-4 h-4" />
+        )}
+      </button>
+
       {serie.poster_path ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -144,26 +180,40 @@ export function SeriesCard({ serie }: { serie: Serie }) {
         </div>
       )}
 
-      <div className="flex flex-col justify-between w-full">
+      <div className="flex flex-col justify-between w-full pr-6">
         <div>
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="space-y-1">
-              <h3 className="font-extrabold text-lg text-zinc-50 tracking-tight leading-tight line-clamp-2">
-                {serie.title}
-              </h3>
+          <div className="flex flex-col gap-1 mb-2">
+            <h3 className="font-extrabold text-lg text-zinc-50 tracking-tight leading-tight line-clamp-1 max-w-[85%]">
+              {serie.title}
+            </h3>
+
+            <div className="flex items-center gap-3">
+              {/* Exibição da Duração vinda da API */}
+              {serie.runtime && serie.runtime > 0 && (
+                <div className="flex items-center gap-1 text-zinc-500 text-xs font-medium">
+                  <Clock className="w-3 h-3" />
+                  <span>
+                    {isMovie
+                      ? `${serie.runtime} min`
+                      : `~${serie.runtime} min/ep`}
+                  </span>
+                </div>
+              )}
+
               {serie.rating ? (
                 <div className="flex items-center gap-1 text-amber-400 font-bold text-xs">
                   <Star className="w-3.5 h-3.5 fill-amber-400 stroke-amber-500" />
                   <span>{serie.rating}/10</span>
                 </div>
               ) : (
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block">
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
                   Sem nota
                 </span>
               )}
             </div>
-            <div className="shrink-0">{renderStatusBadge(serie.status)}</div>
           </div>
+
+          <div className="mb-3">{renderStatusBadge(serie.status)}</div>
 
           {serie.genres && serie.genres.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-4">
@@ -225,7 +275,6 @@ export function SeriesCard({ serie }: { serie: Serie }) {
           )}
         </div>
 
-        {/* SOLUÇÃO: Sincronizamos o estado direto no onOpenChange quando isOpen for true */}
         <Dialog
           open={open}
           onOpenChange={(isOpen) => {
