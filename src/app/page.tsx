@@ -6,7 +6,7 @@ import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { SeriesCard } from "@/components/SeriesCard";
-import { Plus, User, Film } from "lucide-react";
+import { Plus, User, Film, Sparkles } from "lucide-react";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -18,11 +18,24 @@ export default async function HomePage() {
     redirect("/login");
   }
 
+  // 1. Buscamos as séries cadastradas na estante do usuário
   const { data: series } = await supabase
     .from("series")
     .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
+
+  // 2. Buscamos os dados de onboarding diretamente do perfil público do usuário
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("onboarding_completed")
+    .eq("id", user.id)
+    .single();
+
+  // 3. Aplicação das Regras de Negócio Preditivas
+  const onboardingConcluido = profile?.onboarding_completed || false;
+  const totalItensNaBiblioteca = series?.length || 0;
+  const podeUsarIA = onboardingConcluido || totalItensNaBiblioteca >= 15;
 
   return (
     <div className="min-h-screen bg-zinc-950 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-zinc-900/40 via-zinc-950 to-zinc-950 text-white p-6 sm:p-12">
@@ -47,14 +60,39 @@ export default async function HomePage() {
 
         {/* Seção Principal */}
         <main>
-          <div className="mb-12">
-            <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-zinc-50">
-              Sua Biblioteca
-            </h2>
-            <p className="text-zinc-400 text-sm sm:text-base font-medium mt-2">
-              Monitore suas maratonas e gerencie seu progresso diário de
-              episódios.
-            </p>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div>
+              <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-zinc-50">
+                Sua Biblioteca
+              </h2>
+              <p className="text-zinc-400 text-sm sm:text-base font-medium mt-2">
+                Monitore suas maratonas e gerencie seu progresso diário de
+                episódios.
+              </p>
+            </div>
+
+            {/* SEÇÃO DA INTELIGÊNCIA ARTIFICIAL: Botão Inteligente Condicional */}
+            <div className="w-full md:w-auto shrink-0">
+              {podeUsarIA ? (
+                <Button className="w-full md:w-auto bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-black px-6 py-6 rounded-2xl shadow-xl shadow-amber-500/5 flex items-center justify-center gap-2 text-sm tracking-wide transition-all duration-300">
+                  <Sparkles className="w-4 h-4 fill-zinc-950" />
+                  Gerar Lista Preditiva por IA
+                </Button>
+              ) : (
+                <Link href="/onboarding" className="block w-full md:w-auto">
+                  <Button
+                    variant="outline"
+                    className="w-full md:w-auto border-zinc-800/80 bg-zinc-900/30 hover:bg-zinc-900/70 text-zinc-400 hover:text-zinc-200 font-bold px-6 py-6 rounded-2xl flex items-center justify-center gap-3 text-sm transition-all group"
+                  >
+                    <Sparkles className="w-4 h-4 text-zinc-500 group-hover:text-amber-400 transition-colors" />
+                    <span>Liberar Lista Preditiva por IA</span>
+                    <span className="text-[11px] bg-zinc-950/80 border border-zinc-800/80 px-2.5 py-1 rounded-lg text-blue-400 font-black tracking-wider">
+                      {totalItensNaBiblioteca}/15 itens
+                    </span>
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
 
           {/* Grid de Séries reajustada com gap maior (gap-6) */}
