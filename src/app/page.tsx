@@ -27,14 +27,21 @@ export default async function DashboardPage() {
   }
 
   // 3. Busca a biblioteca de mídias do usuário para popular a estante
-  const { data: initialMedia } = await supabase
-    .from("user_media")
+  const { data: initialMedia, error } = await supabase
+    .from("series")
     .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
+  if (error) {
+    console.error("Erro ao buscar dados:", error);
+  }
+
+  // 🌟 OS CONSOLES DEVEM FICAR AQUI, DENTRO DA FUNÇÃO E ANTES DO RETURN 🌟
+  console.log("DEBUG: User ID buscando:", user.id);
+  console.log("DEBUG: Dados encontrados:", initialMedia);
+
   // 4. Renderiza apenas a DashboardClient.
-  // O Header NÃO está aqui, ele já está no seu layout.tsx!
   return (
     <main className="w-full min-h-screen flex flex-col bg-zinc-950">
       <DashboardClient
