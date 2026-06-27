@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Image from "next/image";
-// 🌟 IMPORTANTE: Adicionámos o deleteMedia aqui
 import {
   addOrUpdateMedia,
   getAiRecommendations,
@@ -24,7 +23,10 @@ import {
   Star,
   ChevronRight,
   Pencil,
-  Trash2, // 🌟 Ícone da lixeira adicionado
+  Trash2,
+  LayoutGrid,
+  Library,
+  ArrowDownUp, // 🌟 NOVO ÍCONE para o filtro de Todos os Status
 } from "lucide-react";
 
 interface MediaPayload {
@@ -43,11 +45,12 @@ interface UserMedia {
   tmdb_id: number;
   title: string;
   poster_path: string | null;
-  media_type: string;
-  status: string;
+  media_type: "movie" | "tv" | "series";
+  status: "assistir" | "assistindo" | "finalizados";
   rating: number | null;
   current_season: number;
   current_episode: number;
+  created_at: string;
 }
 
 interface AiRecommendation {
@@ -71,9 +74,19 @@ interface Props {
 }
 
 export function DashboardClient({ userEmail, initialMedia }: Props) {
+  // 🌟 ALTERADO: O activeTab agora começa como "todos" para exibir a estante completa por padrão
   const [activeTab, setActiveTab] = useState<
-    "assistir" | "assistindo" | "finalizados"
-  >("assistir");
+    "todos" | "assistir" | "assistindo" | "finalizados"
+  >("todos");
+
+  // Controle de Filtro de Tipo de Mídia
+  const [mediaTypeFilter, setMediaTypeFilter] = useState<
+    "todos" | "movie" | "tv"
+  >("todos");
+  const [sortBy, setSortBy] = useState<
+    "recentes" | "antigos" | "az" | "rating"
+  >("recentes");
+
   const [library, setLibrary] = useState<UserMedia[]>(initialMedia);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -92,26 +105,59 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
   const [episode, setEpisode] = useState<number>(1);
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false); // 🌟 Estado para controlar o loading do delete
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiStep, setAiStep] = useState("");
   const [aiResults, setAiResults] = useState<AiRecommendation[]>([]);
 
-  const filteredLibrary = library.filter((item) => {
-    const currentStatus = item.status?.toLowerCase();
-    if (activeTab === "assistir")
-      return currentStatus === "assistir" || currentStatus === "planning";
-    if (activeTab === "assistindo")
-      return currentStatus === "assistindo" || currentStatus === "watching";
-    if (activeTab === "finalizados")
-      return (
-        currentStatus === "finalizados" ||
-        currentStatus === "completed" ||
-        currentStatus === "finalizado"
-      );
-    return false;
-  });
+  // 🌟 FILTROS COMBINADOS
+  const filteredLibrary = library
+    .filter((item) => {
+      // ... (deixa a tua lógica de filtro de status e tipo exatamente como já está)
+      const currentStatus = item.status?.toLowerCase();
+      const statusMatch =
+        activeTab === "todos" ||
+        (activeTab === "assistir" &&
+          (currentStatus === "assistir" || currentStatus === "planning")) ||
+        (activeTab === "assistindo" &&
+          (currentStatus === "assistindo" || currentStatus === "watching")) ||
+        (activeTab === "finalizados" &&
+          (currentStatus === "finalizados" ||
+            currentStatus === "completed" ||
+            currentStatus === "finalizado"));
+
+      const typeMatch =
+        mediaTypeFilter === "todos" ||
+        (mediaTypeFilter === "movie"
+          ? item.media_type?.toLowerCase() === "movie"
+          : item.media_type?.toLowerCase() === "tv" ||
+            item.media_type?.toLowerCase() === "series");
+
+      return statusMatch && typeMatch;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "recentes":
+          return (
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+
+        case "antigos":
+          return (
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+
+        case "az":
+          return a.title.localeCompare(b.title);
+
+        case "rating":
+          return (b.rating ?? 0) - (a.rating ?? 0);
+
+        default:
+          return 0;
+      }
+    });
 
   const handleTriggerAi = async () => {
     try {
@@ -157,7 +203,8 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
       await addOrUpdateMedia(payload);
 
       const updatedItem: UserMedia = {
-        id: Math.random().toString(),
+        id: crypto.randomUUID(),
+        created_at: new Date().toISOString(),
         ...payload,
       };
 
@@ -168,7 +215,11 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
         return [...filtered, updatedItem];
       });
 
-      setActiveTab(mediaStatus);
+      // Volta a focar na aba do status salvo, a menos que o utilizador estivesse na visão "Todos"
+      if (activeTab !== "todos") {
+        setActiveTab(mediaStatus);
+      }
+
       setIsAddModalOpen(false);
       setSelectedSearchItem(null);
     } catch (err) {
@@ -181,7 +232,6 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
 
   const handleEditClick = (item: UserMedia) => {
     setEditingItem(item);
-    // Cast corrigido para não usar "any"
     setMediaStatus(
       (item.status as "assistir" | "assistindo" | "finalizados") || "assistir",
     );
@@ -218,7 +268,10 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
         ),
       );
 
-      setActiveTab(mediaStatus);
+      if (activeTab !== "todos") {
+        setActiveTab(mediaStatus);
+      }
+
       setIsEditModalOpen(false);
       setEditingItem(null);
     } catch (err) {
@@ -229,11 +282,9 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
     }
   };
 
-  // 🌟 NOVA FUNÇÃO: Deletar item
   const handleDeleteMedia = async () => {
     if (!editingItem) return;
 
-    // Confirmação simples para evitar exclusão acidental
     const confirmDelete = window.confirm(
       `Tens a certeza que desejas remover "${editingItem.title}" da tua estante?`,
     );
@@ -241,15 +292,10 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
 
     try {
       setIsDeleting(true);
-
-      // Chama o backend para deletar
       await deleteMedia(editingItem.tmdb_id);
-
-      // Remove do estado local (faz a capa sumir da tela imediatamente)
       setLibrary((prev) =>
         prev.filter((item) => item.tmdb_id !== editingItem.tmdb_id),
       );
-
       setIsEditModalOpen(false);
       setEditingItem(null);
     } catch (err) {
@@ -376,7 +422,7 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
 
       {/* COMPONENTE DE ABAS DA ESTANTE */}
       <div className="space-y-6 pt-2">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b border-zinc-900 pb-4 gap-4">
+        <div className="flex flex-col xl:flex-row xl:items-end justify-between border-b border-zinc-900 pb-4 gap-4">
           <div className="space-y-1">
             <h2 className="text-xl font-black tracking-tight text-zinc-100">
               A Minha Estante Virtual
@@ -386,31 +432,104 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
             </p>
           </div>
 
-          <div className="flex p-1 bg-zinc-900/60 border border-zinc-800 rounded-xl w-fit">
-            <button
-              onClick={() => setActiveTab("assistir")}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition ${activeTab === "assistir" ? "bg-zinc-800 text-blue-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
-            >
-              <Calendar className="w-3.5 h-3.5" /> Assistir
-            </button>
-            <button
-              onClick={() => setActiveTab("assistindo")}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition ${activeTab === "assistindo" ? "bg-zinc-800 text-purple-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
-            >
-              <Play className="w-3.5 h-3.5" /> Assistindo
-            </button>
-            <button
-              onClick={() => setActiveTab("finalizados")}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition ${activeTab === "finalizados" ? "bg-zinc-800 text-emerald-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" /> Finalizados
-            </button>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* FILTRO DE TIPO (Todos, Filmes, Séries) */}
+            <div className="flex p-1 bg-zinc-900/60 border border-zinc-800 rounded-xl w-fit sm:flex">
+              <button
+                onClick={() => setMediaTypeFilter("todos")}
+                className={`flex items-center gap-1.5 px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-lg transition ${mediaTypeFilter === "todos" ? "bg-zinc-800 text-zinc-100 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" /> Todos
+              </button>
+              <button
+                onClick={() => setMediaTypeFilter("movie")}
+                className={`flex items-center gap-1.5 px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-lg transition ${mediaTypeFilter === "movie" ? "bg-zinc-800 text-amber-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+              >
+                <Film className="w-3.5 h-3.5" /> Filmes
+              </button>
+              <button
+                onClick={() => setMediaTypeFilter("tv")}
+                className={`flex items-center gap-1.5 px-4 py-2 text-[11px] font-black uppercase tracking-wider rounded-lg transition ${mediaTypeFilter === "tv" ? "bg-zinc-800 text-pink-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+              >
+                <Tv className="w-3.5 h-3.5" /> Séries
+              </button>
+            </div>
+
+            {/* 🌟 FILTRO DE STATUS (Agora com a aba "Todos" e scroll no mobile) */}
+            <div className="flex overflow-x-auto p-1 bg-zinc-900/60 border border-zinc-800 rounded-xl w-full sm:w-fit scrollbar-hide">
+              <button
+                onClick={() => setActiveTab("todos")}
+                className={`flex items-center shrink-0 gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition ${activeTab === "todos" ? "bg-zinc-800 text-zinc-100 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+              >
+                <Library className="w-3.5 h-3.5" /> Todos
+              </button>
+              <button
+                onClick={() => setActiveTab("assistir")}
+                className={`flex items-center shrink-0 gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition ${activeTab === "assistir" ? "bg-zinc-800 text-blue-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+              >
+                <Calendar className="w-3.5 h-3.5" /> Assistir
+              </button>
+              <button
+                onClick={() => setActiveTab("assistindo")}
+                className={`flex items-center shrink-0 gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition ${activeTab === "assistindo" ? "bg-zinc-800 text-purple-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+              >
+                <Play className="w-3.5 h-3.5" /> Assistindo
+              </button>
+              <button
+                onClick={() => setActiveTab("finalizados")}
+                className={`flex items-center shrink-0 gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition ${activeTab === "finalizados" ? "bg-zinc-800 text-emerald-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" /> Finalizados
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 p-1 rounded-xl">
+              <div className="px-3 text-zinc-500">
+                <ArrowDownUp className="w-4 h-4" />
+              </div>
+              <select
+                value={sortBy}
+                onChange={(e) =>
+                  setSortBy(
+                    e.target.value as "recentes" | "antigos" | "az" | "rating",
+                  )
+                }
+                className="bg-transparent text-xs font-black uppercase text-zinc-300 focus:outline-none cursor-pointer py-1 pr-2"
+              >
+                <option value="recentes">Mais Recentes</option>
+                <option value="antigos">Mais Antigos</option>
+                <option value="az">Ordem Alfabética</option>
+                <option value="rating">Melhor Classificação</option>
+              </select>
+            </div>
+
+            {/* FILTRO DE TIPO MOBILE (Para não quebrar a tela em telemóveis) */}
+            <div className="flex p-1 bg-zinc-900/60 border border-zinc-800 rounded-xl w-full sm:hidden">
+              <button
+                onClick={() => setMediaTypeFilter("todos")}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition ${mediaTypeFilter === "todos" ? "bg-zinc-800 text-zinc-100 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+              >
+                Todos
+              </button>
+              <button
+                onClick={() => setMediaTypeFilter("movie")}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition ${mediaTypeFilter === "movie" ? "bg-zinc-800 text-amber-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+              >
+                Filmes
+              </button>
+              <button
+                onClick={() => setMediaTypeFilter("tv")}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition ${mediaTypeFilter === "tv" ? "bg-zinc-800 text-pink-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+              >
+                Séries
+              </button>
+            </div>
           </div>
         </div>
 
         {filteredLibrary.length === 0 ? (
           <div className="text-center py-12 border border-dashed border-zinc-900 rounded-2xl text-zinc-600 font-medium text-sm">
-            Nenhum título adicionado nesta categoria ainda.
+            Nenhum título encontrado com estes filtros.
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
@@ -441,7 +560,7 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
                     </div>
                   )}
 
-                  {/* OVERLAY DO CARTÃO COM BOTÃO DE EDIÇÃO */}
+                  {/* OVERLAY DO CARTÃO */}
                   <div className="absolute inset-0 bg-linear-to-t from-zinc-950 via-zinc-950/40 to-transparent opacity-0 group-hover:opacity-100 transition duration-200 p-3 flex flex-col justify-end gap-1.5">
                     <button
                       onClick={() => handleEditClick(item)}
@@ -556,14 +675,14 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
                   </label>
                   <select
                     value={mediaStatus}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    onChange={(e) => {
                       setMediaStatus(
                         e.target.value as
                           | "assistir"
                           | "assistindo"
                           | "finalizados",
-                      )
-                    }
+                      );
+                    }}
                     className="w-full h-11 bg-zinc-900 border border-zinc-800 text-sm rounded-xl px-3 font-medium text-zinc-200 focus:outline-none focus:border-zinc-700"
                   >
                     <option value="assistir">
@@ -663,7 +782,7 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
         </div>
       )}
 
-      {/* 🌟 MODAL DE EDIÇÃO ATUALIZADO (Poster maior e botão Lixeira) */}
+      {/* MODAL DE EDIÇÃO */}
       {isEditModalOpen && editingItem && (
         <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-sm w-full p-6 space-y-5 shadow-2xl relative">
@@ -682,7 +801,6 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
               </button>
             </div>
 
-            {/* 🌟 POSTER AUMENTADO AQUI */}
             <div className="flex items-center gap-4 bg-zinc-950/60 p-4 rounded-xl border border-zinc-850">
               {editingItem.poster_path ? (
                 <div className="w-20 h-28 bg-zinc-800 rounded-lg overflow-hidden shrink-0 shadow-md">
@@ -796,7 +914,6 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
               )}
             </div>
 
-            {/* 🌟 FOOTER ATUALIZADO COM O BOTÃO DE EXCLUIR */}
             <div className="flex justify-between items-center pt-4 border-t border-zinc-800 mt-2">
               <button
                 type="button"
