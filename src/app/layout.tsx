@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+// 1. Alteramos a importação da fonte aqui:
+import { Poppins } from "next/font/google";
 import { Header } from "@/components/Header";
+import { Providers } from "@/providers/providers";
 import "@/app/globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+// 2. Configuramos a nova fonte (Poppins)
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
   title: "SyncWatch",
@@ -17,15 +23,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className="dark">
+      {/* 3. Aplicamos a classe 'poppins.className' no body */}
       <body
-        className={`${inter.className} bg-zinc-950 text-white antialiased min-h-screen flex flex-col`}
+        className={`${poppins.className} bg-zinc-950 text-white antialiased min-h-screen flex flex-col`}
       >
-        {/* Renderização do Header no topo */}
-        <Header />
-
-        {/* 🌟 VITORIA DE LAYOUT: O contêiner principal ganha flex-1 e pt-16 apenas se necessário, 
-            mas para simplificar e não quebrar o login, as páginas ganham o espaçamento perfeitamente */}
-        <main className="flex-1 flex flex-col">{children}</main>
+        <Providers>
+          <Header />
+          <main className="flex-1 flex flex-col">{children}</main>
+        </Providers>
       </body>
     </html>
   );

@@ -20,20 +20,30 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-// 🌟 TIPAGEM ESTRITA: Formato das mídias salvas na nossa estante
-interface UserMedia {
-  id: string;
+// 🌟 Contrato estrito para corresponder exatamente à assinatura da Server Action
+interface MediaPayload {
   tmdb_id: string;
   title: string;
   poster_path: string | null;
-  media_type: "movie" | "tv";
-  status: "planning" | "watching" | "completed";
+  media_type: "movie" | "series";
+  status: "assistir" | "assistindo" | "finalizados";
   rating: number | null;
   current_season: number;
   current_episode: number;
 }
 
-// 🌟 TIPAGEM ESTRITA: Formato dos itens sugeridos pela IA
+interface UserMedia {
+  id: string;
+  tmdb_id: string;
+  title: string;
+  poster_path: string | null;
+  media_type: string;
+  status: string;
+  rating: number | null;
+  current_season: number;
+  current_episode: number;
+}
+
 interface AiRecommendation {
   id: string;
   title: string;
@@ -42,10 +52,10 @@ interface AiRecommendation {
   poster_path: string;
 }
 
-// 🌟 TIPAGEM ESTRITA: Formato dos dados retornados pelo componente MediaSearch
 interface SearchResultItem {
   id: number | string;
-  title: string;
+  title?: string;
+  name?: string;
   poster_path: string | null;
 }
 
@@ -55,20 +65,20 @@ interface Props {
 }
 
 export function DashboardClient({ userEmail, initialMedia }: Props) {
-  // Controle de Abas (Filtros)
+  // Controle de Abas
   const [activeTab, setActiveTab] = useState<
-    "planning" | "watching" | "completed"
-  >("planning");
+    "assistir" | "assistindo" | "finalizados"
+  >("assistir");
   const [library, setLibrary] = useState<UserMedia[]>(initialMedia);
 
-  // Controle do Modal de Adição (Substituído os animes/any por interfaces)
+  // Controle do Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchType, setSearchType] = useState<"movie" | "tv">("movie");
   const [selectedSearchItem, setSelectedSearchItem] =
     useState<SearchResultItem | null>(null);
   const [mediaStatus, setMediaStatus] = useState<
-    "planning" | "watching" | "completed"
-  >("planning");
+    "assistir" | "assistindo" | "finalizados"
+  >("assistir");
   const [mediaRating, setMediaRating] = useState<number>(10);
   const [season, setSeason] = useState<number>(1);
   const [episode, setEpisode] = useState<number>(1);
@@ -79,8 +89,21 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
   const [aiStep, setAiStep] = useState("");
   const [aiResults, setAiResults] = useState<AiRecommendation[]>([]);
 
-  // Filtragem da Estante em Tempo Real
-  const filteredLibrary = library.filter((item) => item.status === activeTab);
+  // Filtros Defensivos
+  const filteredLibrary = library.filter((item) => {
+    const currentStatus = item.status?.toLowerCase();
+    if (activeTab === "assistir")
+      return currentStatus === "assistir" || currentStatus === "planning";
+    if (activeTab === "assistindo")
+      return currentStatus === "assistindo" || currentStatus === "watching";
+    if (activeTab === "finalizados")
+      return (
+        currentStatus === "finalizados" ||
+        currentStatus === "completed" ||
+        currentStatus === "finalizado"
+      );
+    return false;
+  });
 
   const handleTriggerAi = async () => {
     try {
@@ -107,17 +130,24 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
     if (!selectedSearchItem) return;
     try {
       setIsSaving(true);
-      const payload = {
+
+      const resolvedTitle =
+        selectedSearchItem.title ||
+        selectedSearchItem.name ||
+        "Título Desconhecido";
+
+      // 🌟 CORREÇÃO CORE: payload explicitamente tipado como MediaPayload impede erros de inferência genérica do TS
+      const payload: MediaPayload = {
         tmdb_id: selectedSearchItem.id.toString(),
-        title: selectedSearchItem.title,
+        title: resolvedTitle,
         poster_path: selectedSearchItem.poster_path || null,
-        media_type: searchType,
+        media_type: searchType === "tv" ? "series" : "movie",
         status: mediaStatus,
-        rating: mediaStatus === "completed" ? mediaRating : null,
+        rating: mediaStatus === "finalizados" ? mediaRating : null,
         current_season:
-          searchType === "tv" && mediaStatus === "watching" ? season : 0,
+          searchType === "tv" && mediaStatus === "assistindo" ? season : 0,
         current_episode:
-          searchType === "tv" && mediaStatus === "watching" ? episode : 0,
+          searchType === "tv" && mediaStatus === "assistindo" ? episode : 0,
       };
 
       await addOrUpdateMedia(payload);
@@ -126,6 +156,7 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
         id: Math.random().toString(),
         ...payload,
       };
+
       setLibrary((prev) => {
         const filtered = prev.filter(
           (item) => item.tmdb_id !== payload.tmdb_id,
@@ -133,10 +164,12 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
         return [...filtered, updatedItem];
       });
 
+      setActiveTab(mediaStatus);
       setIsAddModalOpen(false);
       setSelectedSearchItem(null);
     } catch (err) {
-      console.error(err);
+      console.error("Erro completo ao tentar salvar mídia:", err);
+      alert("Falha ao salvar o título. Verifique as configurações do banco.");
     } finally {
       setIsSaving(false);
     }
@@ -181,7 +214,7 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
             </h3>
             <p className="text-sm text-zinc-400 max-w-xl">
               O seu ecossistema está calibrado. Gere sugestões personalizadas de
-              mídias baseadas no seu perfil e gosto de IA.
+              mídias baseadas no seu perfil de IA.
             </p>
           </div>
 
@@ -204,7 +237,7 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
           </Button>
         </div>
 
-        {/* Feedback de Carregamento da IA */}
+        {/* 🌟 VITORIA VISUAL: Consumindo a variável aiStep na renderização para resolver o aviso do linter */}
         {aiLoading && (
           <div className="p-4 bg-zinc-950/40 border border-zinc-800/60 rounded-2xl flex items-center gap-3 text-xs font-bold text-amber-400/90 animate-pulse">
             <Loader2 className="w-4 h-4 animate-spin shrink-0" />
@@ -212,7 +245,6 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
           </div>
         )}
 
-        {/* Exibição dos Resultados Gerados pela IA */}
         {aiResults.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 animate-in fade-in zoom-in-95 duration-300">
             {aiResults.map((rec) => (
@@ -220,7 +252,6 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
                 key={rec.id}
                 className="bg-zinc-950/80 border border-amber-500/20 rounded-2xl p-4 flex gap-4 hover:border-amber-500/40 transition"
               >
-                {/* 🌟 CORREÇÃO PERFORMANCE: Substituído <img> por <Image /> com dimensões explícitas */}
                 <div className="w-16 h-24 bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shrink-0 relative">
                   <Image
                     src={`https://image.tmdb.org/t/p/w185${rec.poster_path}`}
@@ -261,77 +292,85 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
 
           <div className="flex p-1 bg-zinc-900/60 border border-zinc-800 rounded-xl w-fit">
             <button
-              onClick={() => setActiveTab("planning")}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition ${activeTab === "planning" ? "bg-zinc-800 text-blue-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+              onClick={() => setActiveTab("assistir")}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition ${activeTab === "assistir" ? "bg-zinc-800 text-blue-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
             >
-              <Calendar className="w-3.5 h-3.5" /> Quero Assistir
+              <Calendar className="w-3.5 h-3.5" /> Assistir
             </button>
             <button
-              onClick={() => setActiveTab("watching")}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition ${activeTab === "watching" ? "bg-zinc-800 text-purple-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+              onClick={() => setActiveTab("assistindo")}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition ${activeTab === "assistindo" ? "bg-zinc-800 text-purple-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               <Play className="w-3.5 h-3.5" /> Assistindo
             </button>
             <button
-              onClick={() => setActiveTab("completed")}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition ${activeTab === "completed" ? "bg-zinc-800 text-emerald-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
+              onClick={() => setActiveTab("finalizados")}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition ${activeTab === "finalizados" ? "bg-zinc-800 text-emerald-400 shadow" : "text-zinc-500 hover:text-zinc-300"}`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" /> Finalizados
             </button>
           </div>
         </div>
 
-        {/* Grid de Cards Filtrados */}
         {filteredLibrary.length === 0 ? (
           <div className="text-center py-12 border border-dashed border-zinc-900 rounded-2xl text-zinc-600 font-medium text-sm">
             Nenhum título adicionado nesta categoria ainda.
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-            {filteredLibrary.map((item) => (
-              <div
-                key={item.id}
-                className="group aspect-2/3 bg-zinc-900/40 border border-zinc-800 rounded-2xl relative overflow-hidden shadow transition hover:border-zinc-700"
-              >
-                {item.poster_path ? (
-                  /* 🌟 CORREÇÃO PERFORMANCE: Substituído <img> por <Image /> com dimensões proporcionais da estante */
-                  <Image
-                    src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
-                    alt={item.title}
-                    width={220}
-                    height={330}
-                    className="w-full h-full object-cover group-hover:scale-102 transition duration-300"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center p-4 text-center text-xs font-bold text-zinc-500">
-                    {item.title}
-                  </div>
-                )}
+            {filteredLibrary.map((item) => {
+              const isTvType =
+                item.media_type?.toLowerCase() === "tv" ||
+                item.media_type?.toLowerCase() === "series";
+              const isWatchingStatus =
+                item.status?.toLowerCase() === "assistindo" ||
+                item.status?.toLowerCase() === "watching";
 
-                <div className="absolute inset-0 bg-linear-to-t from-zinc-950 via-zinc-950/40 to-transparent opacity-0 group-hover:opacity-100 transition duration-200 p-3 flex flex-col justify-end gap-1.5">
-                  <h5 className="font-bold text-xs text-zinc-200 line-clamp-1">
-                    {item.title}
-                  </h5>
-                  {item.rating && (
-                    <div className="flex items-center gap-1 text-[11px] text-amber-400 font-black">
-                      <Star className="w-3 h-3 fill-current" /> {item.rating}/10
+              return (
+                <div
+                  key={item.id}
+                  className="group aspect-2/3 bg-zinc-900/40 border border-zinc-800 rounded-2xl relative overflow-hidden shadow transition hover:border-zinc-700"
+                >
+                  {item.poster_path ? (
+                    <Image
+                      src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
+                      alt={item.title}
+                      width={220}
+                      height={330}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center p-4 text-center text-xs font-bold text-zinc-500">
+                      {item.title}
                     </div>
                   )}
-                  {item.media_type === "tv" && item.status === "watching" && (
-                    <span className="text-[10px] font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded-md w-fit">
-                      T{item.current_season} • E{item.current_episode}
-                    </span>
-                  )}
+
+                  <div className="absolute inset-0 bg-linear-to-t from-zinc-950 via-zinc-950/40 to-transparent opacity-0 group-hover:opacity-100 transition duration-200 p-3 flex flex-col justify-end gap-1.5">
+                    <h5 className="font-bold text-xs text-zinc-200 line-clamp-1">
+                      {item.title}
+                    </h5>
+                    {item.rating && (
+                      <div className="flex items-center gap-1 text-[11px] text-amber-400 font-black">
+                        <Star className="w-3 h-3 fill-current" /> {item.rating}
+                        /10
+                      </div>
+                    )}
+                    {isTvType && isWatchingStatus && (
+                      <span className="text-[10px] font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded-md w-fit">
+                        T{item.current_season} • E{item.current_episode}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* MODAL DE ADIÇÃO DE MÍDIA */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 z-100 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
               <h3 className="font-black text-base text-zinc-100 uppercase tracking-wide">
@@ -350,6 +389,7 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
 
             <div className="grid grid-cols-2 p-1 bg-zinc-950 border border-zinc-850 rounded-xl">
               <button
+                type="button"
                 onClick={() => {
                   setSearchType("movie");
                   setSelectedSearchItem(null);
@@ -359,6 +399,7 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
                 <Film className="w-3.5 h-3.5" /> Filtrar por Filmes
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setSearchType("tv");
                   setSelectedSearchItem(null);
@@ -390,7 +431,7 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
                   <ChevronRight className="w-3.5 h-3.5 text-blue-500" />
                   Selecionado:{" "}
                   <span className="text-white font-black">
-                    {selectedSearchItem.title}
+                    {selectedSearchItem.title || selectedSearchItem.name}
                   </span>
                 </div>
 
@@ -398,29 +439,31 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
                   <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
                     Mover para qual Categoria?
                   </label>
-                  {/* 🌟 CORREÇÃO TIPAGEM: Evento tipado estritamente como HTMLSelectElement */}
                   <select
                     value={mediaStatus}
                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                       setMediaStatus(
-                        e.target.value as "planning" | "watching" | "completed",
+                        e.target.value as
+                          | "assistir"
+                          | "assistindo"
+                          | "finalizados",
                       )
                     }
                     className="w-full h-11 bg-zinc-900 border border-zinc-800 text-sm rounded-xl px-3 font-medium text-zinc-200 focus:outline-none focus:border-zinc-700"
                   >
-                    <option value="planning">
+                    <option value="assistir">
                       Quero Assistir (Planejamento)
                     </option>
-                    <option value="watching">
+                    <option value="assistindo">
                       Assistindo Agora (Maratona Ativa)
                     </option>
-                    <option value="completed">
+                    <option value="finalizados">
                       Finalizado (Histórico Concluído)
                     </option>
                   </select>
                 </div>
 
-                {searchType === "tv" && mediaStatus === "watching" && (
+                {searchType === "tv" && mediaStatus === "assistindo" && (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
@@ -431,7 +474,7 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
                         min={1}
                         value={season}
                         onChange={(e) => setSeason(Number(e.target.value))}
-                        className="w-full h-11 bg-zinc-900 border border-zinc-800 rounded-xl text-center text-sm font-bold text-white focus:outline-none"
+                        className="w-full h-11 bg-zinc-900 border border-zinc-800 text-center text-sm font-bold text-white focus:outline-none"
                       />
                     </div>
                     <div className="space-y-1">
@@ -443,13 +486,13 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
                         min={1}
                         value={episode}
                         onChange={(e) => setEpisode(Number(e.target.value))}
-                        className="w-full h-11 bg-zinc-900 border border-zinc-800 rounded-xl text-center text-sm font-bold text-white focus:outline-none"
+                        className="w-full h-11 bg-zinc-900 border border-zinc-800 text-center text-sm font-bold text-white focus:outline-none"
                       />
                     </div>
                   </div>
                 )}
 
-                {mediaStatus === "completed" && (
+                {mediaStatus === "finalizados" && (
                   <div className="space-y-1">
                     <div className="flex justify-between text-[10px] font-black uppercase tracking-wider text-zinc-500">
                       <span>Sua Classificação</span>
@@ -473,6 +516,7 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
             <div className="flex justify-end gap-3 pt-2 border-t border-zinc-800">
               <Button
                 variant="outline"
+                type="button"
                 onClick={() => {
                   setIsAddModalOpen(false);
                   setSelectedSearchItem(null);
@@ -482,6 +526,7 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
                 Cancelar
               </Button>
               <Button
+                type="button"
                 onClick={handleSaveMedia}
                 disabled={!selectedSearchItem || isSaving}
                 className="bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl text-xs uppercase tracking-wider h-11 px-5 disabled:opacity-40"
