@@ -22,10 +22,10 @@ import {
 
 // 🌟 Contrato estrito para corresponder exatamente à assinatura da Server Action
 interface MediaPayload {
-  tmdb_id: string;
+  tmdb_id: number;
   title: string;
   poster_path: string | null;
-  media_type: "movie" | "series";
+  media_type: "movie" | "tv";
   status: "assistir" | "assistindo" | "finalizados";
   rating: number | null;
   current_season: number;
@@ -34,7 +34,7 @@ interface MediaPayload {
 
 interface UserMedia {
   id: string;
-  tmdb_id: string;
+  tmdb_id: number;
   title: string;
   poster_path: string | null;
   media_type: string;
@@ -138,16 +138,16 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
 
       // 🌟 CORREÇÃO CORE: payload explicitamente tipado como MediaPayload impede erros de inferência genérica do TS
       const payload: MediaPayload = {
-        tmdb_id: selectedSearchItem.id.toString(),
+        tmdb_id: Number(selectedSearchItem.id),
         title: resolvedTitle,
         poster_path: selectedSearchItem.poster_path || null,
-        media_type: searchType === "tv" ? "series" : "movie",
+        media_type: searchType === "tv" ? "tv" : "movie",
         status: mediaStatus,
         rating: mediaStatus === "finalizados" ? mediaRating : null,
         current_season:
-          searchType === "tv" && mediaStatus === "assistindo" ? season : 0,
+          searchType === "tv" && mediaStatus === "assistindo" ? season : 1,
         current_episode:
-          searchType === "tv" && mediaStatus === "assistindo" ? episode : 0,
+          searchType === "tv" && mediaStatus === "assistindo" ? episode : 1,
       };
 
       await addOrUpdateMedia(payload);
