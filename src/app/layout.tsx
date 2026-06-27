@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google"; // Carregando a nova fonte
-import "./globals.css";
-import { Providers } from "@/components/providers";
+// 1. Alteramos a importação da fonte aqui:
+import { Poppins } from "next/font/google";
+import { Header } from "@/components/Header";
+import { Providers } from "@/providers/providers";
+import "@/app/globals.css";
 
-// Configurando a fonte
-const plusJakartaSans = Plus_Jakarta_Sans({
+// 2. Configuramos a nova fonte (Poppins)
+const poppins = Poppins({
   subsets: ["latin"],
-  variable: "--font-sans",
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
   title: "SyncWatch",
-  description: "Sua plataforma de filmes e séries",
+  description: "Monitore suas maratonas de cinema",
 };
 
 export default function RootLayout({
@@ -21,10 +23,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className="dark">
+      {/* 3. Aplicamos a classe 'poppins.className' no body */}
       <body
-        className={`${plusJakartaSans.className} bg-zinc-950 text-white antialiased`}
+        className={`${poppins.className} bg-zinc-950 text-white antialiased min-h-screen flex flex-col`}
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          <Header />
+          <main className="flex-1 flex flex-col">{children}</main>
+        </Providers>
       </body>
     </html>
   );
