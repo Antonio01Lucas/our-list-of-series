@@ -63,13 +63,12 @@ export async function signup(prevState: LoginState, formData: FormData) {
   // 🔥 MELHORIA CORE DE UX: O utilizador já nasce ativo e logado nos cookies!
   // Em vez de mandá-lo ler uma mensagem e digitar tudo de novo, jogamo-lo direto para a Home.
   // Lá, o gateway da Home vai perceber que o 'onboarding_completed' dele é falso e abrirá a calibração automaticamente.
-  redirect("/");
 }
 
 // Action: Login com Google
 export async function signInWithGoogle() {
   const supabase = await createClient();
-
+  console.log(getBaseUrl());
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
