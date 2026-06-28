@@ -656,6 +656,7 @@ export function DashboardClient({ userEmail, initialMedia }: Props) {
                     : "Digite o nome da série..."
                 }
                 onSelect={(media) => setSelectedSearchItem(media)}
+                className="w-full h-11 bg-zinc-900 border border-zinc-800 text-sm rounded-xl px-3 font-medium text-zinc-200 focus:outline-none focus:border-zinc-700"
               />
             </div>
 
