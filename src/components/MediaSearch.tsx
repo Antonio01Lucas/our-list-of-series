@@ -32,6 +32,7 @@ interface TMDBMediaItem {
 interface MediaSearchProps {
   type: "tv" | "movie" | "person";
   placeholder?: string;
+  className?: string;
   onSelect: (media: {
     id: number;
     title: string;
@@ -43,6 +44,7 @@ export function MediaSearch({
   type,
   placeholder = "Pesquisar...",
   onSelect,
+  className,
 }: MediaSearchProps) {
   const [open, setOpen] = React.useState(false);
   const [value, setValue] = React.useState("");
@@ -81,6 +83,7 @@ export function MediaSearch({
           className={cn(
             "w-full h-15 justify-between bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900 rounded-2xl px-5 text-sm sm:text-base font-medium transition-all duration-200 text-left shadow-inner",
             open && "border-zinc-700 text-zinc-200 ring-4 ring-blue-500/10",
+            className,
           )}
         >
           <div className="flex items-center gap-3 truncate w-full">
