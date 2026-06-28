@@ -69,7 +69,7 @@ export async function signup(prevState: LoginState, formData: FormData) {
 // Action: Login com Google
 export async function signInWithGoogle() {
   const supabase = await createClient();
-
+  console.log(getBaseUrl());
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {

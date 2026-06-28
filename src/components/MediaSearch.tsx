@@ -1,5 +1,14 @@
 "use client";
 
+// ======================================================
+// IMPORTAÇÕES
+// ======================================================
+//
+// Este componente utiliza React Query para realizar buscas
+// assíncronas na API do TMDB e componentes do Shadcn/UI
+// para fornecer uma experiência de pesquisa moderna.
+//
+
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronsUpDown, Loader2, Search, User } from "lucide-react";
@@ -19,6 +28,19 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+// ======================================================
+// INTERFACES
+// ======================================================
+//
+// TMDBMediaItem:
+// Representa o formato simplificado de um resultado
+// retornado pela API do TMDB.
+//
+// MediaSearchProps:
+// Define as propriedades aceitas pelo componente,
+// permitindo reutilização em diferentes páginas.
+//
+
 interface TMDBMediaItem {
   id: number;
   name?: string;
@@ -33,6 +55,7 @@ interface MediaSearchProps {
   type: "tv" | "movie" | "person";
   placeholder?: string;
   className?: string;
+  popoverClassName?: string;
   onSelect: (media: {
     id: number;
     title: string;
@@ -40,15 +63,52 @@ interface MediaSearchProps {
   }) => void;
 }
 
+// ======================================================
+// COMPONENTE PRINCIPAL
+// ======================================================
+//
+// MediaSearch
+//
+// Campo de pesquisa reutilizável para consultar o catálogo
+// do TMDB.
+//
+// Características:
+// • Busca filmes, séries ou pessoas.
+// • Utiliza debounce para reduzir chamadas à API.
+// • Exibe resultados em um Popover.
+// • Retorna o item selecionado ao componente pai.
+//
+
 export function MediaSearch({
   type,
   placeholder = "Pesquisar...",
   onSelect,
   className,
+  popoverClassName,
 }: MediaSearchProps) {
+  // ======================================================
+  // ESTADOS DO COMPONENTE
+  // ======================================================
+
+  // Controla se o Popover está aberto.
   const [open, setOpen] = React.useState(false);
+
+  // Texto exibido no campo de pesquisa.
   const [value, setValue] = React.useState("");
+
+  // Valor utilizado para efetuar a consulta na API.
+  // É atualizado somente após o debounce.
   const [search, setSearch] = React.useState("");
+
+  // ======================================================
+  // DEBOUNCE DA PESQUISA
+  // ======================================================
+  //
+  // Aguarda 400 ms após o usuário parar de digitar antes
+  // de atualizar o estado responsável pela consulta.
+  //
+  // Isso evita múltiplas requisições consecutivas ao TMDB.
+  //
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -57,6 +117,19 @@ export function MediaSearch({
 
     return () => clearTimeout(timer);
   }, [value]);
+
+  // ======================================================
+  // CONSULTA AO TMDB
+  // ======================================================
+  //
+  // Realiza a busca utilizando React Query.
+  //
+  // A consulta somente é executada quando existe texto
+  // digitado pelo usuário.
+  //
+  // Os resultados ficam armazenados em cache conforme
+  // o tipo da mídia e o termo pesquisado.
+  //
 
   const { data, isLoading } = useQuery<TMDBMediaItem[]>({
     queryKey: ["mediaSearch", type, search],
@@ -72,16 +145,37 @@ export function MediaSearch({
     enabled: search.length > 0,
   });
 
+  // ======================================================
+  // RENDERIZAÇÃO
+  // ======================================================
+  //
+  // Estrutura:
+  //
+  // • Popover
+  //     ├── Botão de pesquisa
+  //     └── Lista de resultados
+  //
+  // O componente é totalmente reutilizável e permite
+  // personalização através das propriedades recebidas.
+  //
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        {/* 🌟 UPGRADE DE ESCALA: Botão expandido para h-[60px], cantos arredondados premium e textos/ícones maiores */}
+        {/* =====================================================
+    BOTÃO QUE ABRE O POPOVER
+    =====================================================
+
+    Exibe o texto digitado ou o placeholder informado
+    pelo componente pai.
+  */}
+
         <Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full h-15 justify-between bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900 rounded-2xl px-5 text-sm sm:text-base font-medium transition-all duration-200 text-left shadow-inner",
+            "w-full h-15 justify-between bg-zinc-950 border-zinc-800 text-zinc-400 hover:bg-zinc-900 rounded-2xl px-3 text-sm sm:text-base font-medium transition-all duration-200 text-left shadow-inner",
             open && "border-zinc-700 text-zinc-200 ring-4 ring-blue-500/10",
             className,
           )}
@@ -96,12 +190,25 @@ export function MediaSearch({
         </Button>
       </PopoverTrigger>
 
+      {/* =====================================================
+    CONTEÚDO DO POPOVER
+    =====================================================
+
+    Contém o campo de pesquisa e a lista dinâmica de
+    resultados retornados pelo TMDB.
+*/}
+
       <PopoverContent
         align="start"
-        className="w-[92vw] sm:w-175 p-0 bg-zinc-950 border-zinc-800 rounded-xl shadow-2xl overflow-hidden mt-2"
+        className={cn(
+          "w-133 p-0 bg-zinc-950 border-zinc-800 rounded-xl shadow-2xl overflow-hidden mt-2",
+          popoverClassName,
+        )}
       >
         {" "}
         <Command className="bg-zinc-950 text-white" shouldFilter={false}>
+          {/* Campo onde o usuário digita o termo da pesquisa. */}
+
           <CommandInput
             placeholder={
               type === "person"
@@ -112,6 +219,9 @@ export function MediaSearch({
             onValueChange={setValue}
             className="border-none focus:ring-0 text-zinc-200 h-12 bg-zinc-950"
           />
+
+          {/* Estado de carregamento da consulta */}
+
           <CommandList className="max-h-80 overflow-y-auto border-t border-zinc-900/80 custom-scrollbar">
             {isLoading && (
               <div className="flex items-center justify-center py-8 text-zinc-400 gap-2.5 text-sm font-medium">
@@ -120,11 +230,15 @@ export function MediaSearch({
               </div>
             )}
 
+            {/* Nenhum resultado encontrado */}
+
             {!isLoading && search && data?.length === 0 && (
               <CommandEmpty className="py-8 text-center text-sm text-zinc-500 font-medium">
                 Nenhum resultado encontrado.
               </CommandEmpty>
             )}
+
+            {/* Estado inicial antes da pesquisa */}
 
             {!search && !isLoading && (
               <div className="py-8 text-center text-sm text-zinc-500 font-medium">
@@ -132,8 +246,20 @@ export function MediaSearch({
               </div>
             )}
 
+            {/* =====================================================
+             LISTA DE RESULTADOS
+             =====================================================
+
+             Cada item representa uma mídia retornada pelo TMDB.
+             Ao selecionar um item, o componente envia os dados
+             ao componente pai através da função onSelect().
+            */}
+
             <CommandGroup>
               {data?.map((item: TMDBMediaItem) => {
+                // Normaliza os dados recebidos da API para filmes,
+                // séries e pessoas.
+
                 const title = item.name || item.title || "Desconhecido";
                 const releaseDate = item.first_air_date || item.release_date;
                 const year =
@@ -148,6 +274,10 @@ export function MediaSearch({
                     value={title}
                     onSelect={() => {
                       setValue("");
+
+                      // Envia a mídia selecionada para o componente pai
+                      // e fecha automaticamente o Popover.
+
                       onSelect({
                         id: item.id,
                         title: title,
@@ -158,6 +288,9 @@ export function MediaSearch({
                     className="flex items-center justify-between py-3 px-4 hover:bg-zinc-900/60 cursor-pointer text-zinc-300 data-[selected='true']:bg-zinc-900 data-[selected='true']:text-white transition-colors"
                   >
                     <div className="flex items-center gap-4 truncate">
+                      {/* Exibe o pôster da mídia ou um placeholder quando
+                          não houver imagem disponível. */}
+
                       {imagePath ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img

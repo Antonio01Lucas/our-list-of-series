@@ -86,6 +86,7 @@ export default function NewSeriesPage() {
               key={mediaType} // Reseta a busca se mudar de abas
               type={mediaType}
               placeholder={
+                popoverClassName="w-133"
                 mediaType === "tv"
                   ? "Ex: How I Met Your Mother..."
                   : "Ex: Interstellar..."

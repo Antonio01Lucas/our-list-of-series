@@ -129,6 +129,7 @@ export default function OnboardingQuestionsPage() {
               <MediaSearch
                 type="movie"
                 placeholder="Pesquisar filme no catálogo..."
+                popoverClassName="w-175"
                 onSelect={(media) =>
                   addMovie({
                     id: media.id.toString(),
@@ -201,6 +202,7 @@ export default function OnboardingQuestionsPage() {
               <MediaSearch
                 type="tv"
                 placeholder="Pesquisar série no catálogo..."
+                popoverClassName="w-175"
                 onSelect={(media) =>
                   addSeries({
                     id: media.id.toString(),
@@ -280,6 +282,7 @@ export default function OnboardingQuestionsPage() {
                 <MediaSearch
                   type="person"
                   placeholder="Buscar ator ou atriz no catálogo global..."
+                  popoverClassName="w-175"
                   onSelect={(media) => addActorTag(media.title)}
                 />
                 <div className="flex flex-wrap gap-1.5 pt-1">
@@ -309,6 +312,7 @@ export default function OnboardingQuestionsPage() {
                 <MediaSearch
                   type="person"
                   placeholder="Buscar cineasta ou diretor pelo nome..."
+                  popoverClassName="w-175"
                   onSelect={(media) => addDirectorTag(media.title)}
                 />
                 <div className="flex flex-wrap gap-1.5 pt-1">
